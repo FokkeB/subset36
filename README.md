@@ -1,4 +1,4 @@
-# subset36
+# ETCS Subset 36 balise encoding and decoding
 Encode and decode Eurobalise contents as described in ETCS subset 36 (FFFIS for Eurobalise, v3.1.0, Dec 17th 2015)
 
 Copyright 2023, Fokke Bronsema, fokke@bronsema.net, version 1, February/March 2023
