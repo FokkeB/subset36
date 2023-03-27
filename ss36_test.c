@@ -366,8 +366,8 @@ int main(int argc, char** argv)
     // destroy the telegrams:
     destroy_telegrams(telegrams);
 
-    eprintf(VERB_QUIET, "Ready. Press any key to continue ...");
-    char dummy = getch();
+//    eprintf(VERB_QUIET, "Ready. Press any key to continue ...");
+//    char dummy = getch();
 
     restoreConsole();
 
