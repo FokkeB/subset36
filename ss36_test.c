@@ -355,7 +355,7 @@ int main(int argc, char** argv)
         }
      
     // convert the input to the other format or check the correctness of a telegram:
-    if ( (force_multi || (verbose <= VERB_PROG)) && (literal != NULL) )
+    if ( (force_multi || (verbose <= VERB_PROG)) && (literal == NULL) )
         result = convert_telegrams_multithreaded(telegrams);
     else
         result = convert_telegrams_singlethreaded(telegrams);
