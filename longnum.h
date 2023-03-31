@@ -64,7 +64,7 @@ void longnum_to_array(uint8_t* arr, t_longnum ln, int n);
 //int long_find_bit_pattern (t_longnum longnum, unsigned int findme, int n);
 void print_longnum_bin (int v, t_longnum longnum);
 void print_longnum_hex (int v, t_longnum longnum);
-int sprint_longnum_hex(char* line, t_longnum longnum);
+int sprint_longnum_hex(char* line, t_longnum longnum, int n);
 void print_longnum_fancy(int verbosity, t_longnum longnum, int wordlength, int size, t_longnum_layout *longnum_layout);
 
 #endif

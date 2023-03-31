@@ -173,9 +173,9 @@ t_telegram* parse_input_line(char* line)
     else
         p = &(line[strlen(line)]);
 
-    // then clear trailing spaces, CR's, LF's
+    // then clear trailing spaces, CR's, LF's, tabs
     p--;
-    while ((*p == '\n') || (*p == '\r') || (*p == ' '))
+    while ((*p == '\n') || (*p == '\r') || (*p == ' ') || (*p == '\t') )
     {
         *p = '\0';
         p--;

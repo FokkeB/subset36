@@ -363,6 +363,26 @@ void print_longnum_hex (int v, t_longnum longnum)
         eprintf (v, "%08X", longnum[j]);
 }
 
+int sprint_longnum_hex(char* line, t_longnum longnum, int n)
+// writes the hex values in longnum to *line (no range check)
+// returns the amount of chars written
+// write per byte (instead of per whole word) to prevent unwanted leading 0's
+{
+    int j;
+    char t[10];
+    *line = 0;
+    t_word w;
+
+    for (j = (n-1) / 8; j >= 0; j--)
+    {
+        w = long_get_word(longnum, j*8);
+        sprintf(t, "%02X", w&0xFF);
+        strcat(line, t);
+    }
+
+     return strlen(line);
+}
+/*
 int sprint_longnum_hex(char* line, t_longnum longnum)
 // writes the hex values in longnum to *line (no range check)
 // returns the amount of chars written
@@ -380,7 +400,7 @@ int sprint_longnum_hex(char* line, t_longnum longnum)
 
     return strlen (line);
 }
-
+*/
 void print_longnum_fancy(int v, t_longnum longnum, int wordlength, int size, t_longnum_layout *longnum_layout)
 /**
  * prints the longnum binary, in a structured way, with colors!
