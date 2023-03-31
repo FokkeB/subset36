@@ -18,7 +18,7 @@ void create_new_telegram(t_telegram** telegram, char* inputstr)
 // creates and initialises a new telegram
 {
     *telegram = malloc(sizeof(struct t_telegram));
-    if (telegram == NULL)
+    if (*telegram == NULL)
     {
         eprintf(VERB_QUIET, ERROR_COLOR"Error"ANSI_COLOR_RESET" allocating memory for a new telegram, parsing stops prematurely.\n");
         exit(ERR_MEM_ALLOC);
@@ -30,7 +30,8 @@ void create_new_telegram(t_telegram** telegram, char* inputstr)
     (*telegram)->next = NULL;
 
     // reserve some space to permanently store the input string:
-    (*telegram)->input_string = malloc(strlen(inputstr) + 1);
+    int len = strlen(inputstr) + 1;
+    (*telegram)->input_string = malloc(len);
     if ((*telegram)->input_string == NULL)
     {
         eprintf(VERB_QUIET, ERROR_COLOR"Error allocating memory for a the input string, parsing stops prematurely.\n"ANSI_COLOR_RESET);
@@ -506,7 +507,7 @@ int test_candidate_telegram(int v, t_telegram* telegram, int* err_location)
     *err_location = check_aperiodicity_condition(telegram);
     if (*err_location != MAGIC_WORD)
     {
-        eprintf(v, ERROR_COLOR"check_off_synch_parsing_condition fails"ANSI_COLOR_RESET" at bit# %d.\n", *err_location);
+        eprintf(v, ERROR_COLOR"check_aperiodicity_condition fails"ANSI_COLOR_RESET" at bit# %d.\n", *err_location);
         return ERR_APERIODICITY;
     }
     else
@@ -733,6 +734,8 @@ int check_aperiodicity_condition (t_telegram *telegram)
  */
 {
     int i, k, word_high, word_low, hammingdistance, err_start=MAGIC_WORD;
+    t_longnum_layout err_coloring[3] = { 0 };
+    char* red = ANSI_COLOR_RED;
 
     // only for long telegrams, skip the short ones
     if (telegram->size == s_long)
@@ -766,6 +769,20 @@ int check_aperiodicity_condition (t_telegram *telegram)
                 if (err_start != MAGIC_WORD)
                     // error was found, return the location of the lower word:
                 {
+                    err_coloring[0].start = i;
+                    err_coloring[0].length = 22;
+                    strcpy(err_coloring[0].color, red);
+                    err_coloring[1].start = (i-k-341<0)?i-k-341+1023:i-k-341;
+                    err_coloring[1].length = 22;
+                    strcpy(err_coloring[1].color, red);
+                    err_coloring[2] = no_colors;
+
+                    print_longnum_fancy(VERB_GLOB, telegram->contents, 11, telegram->size, err_coloring);
+                    eprintf(VERB_GLOB, ERROR_COLOR"NOK:"ANSI_COLOR_RESET" Aperiodicity check fails. i=%d;k=%d\n", i, k);
+                    eprintf(VERB_GLOB, "bit #%d:\t", i); print_bin(VERB_GLOB, word_high, 22); eprintf(VERB_GLOB, "\n");
+                    eprintf(VERB_GLOB, "bit #%d:\t", i-k-341); print_bin(VERB_GLOB, word_low, 22); eprintf(VERB_GLOB, "\n");
+                    eprintf(VERB_GLOB, "Hamming distance=%d\n", hammingdistance);
+
                     telegram->errcode = ERR_APERIODICITY;
                     return err_start;
                 }
@@ -904,7 +921,7 @@ int check_check_bits(t_telegram* telegram)
 // calculation of check bits is described in subset 36, 4.3.2.4.
 {
     t_telegram temp;
-    t_longnum cb1, cb2;
+    t_longnum cb1 = { 0 }, cb2 = { 0 };
 
     init_telegram(&temp, telegram->size);
     long_copy(temp.contents, telegram->contents);
@@ -915,6 +932,11 @@ int check_check_bits(t_telegram* telegram)
     // compare the two values and return the error code:
     if (!long_cmp(cb1, cb2))
     {
+        eprintf(VERB_GLOB, "Check bits in telegram: \n");
+        print_longnum_bin(VERB_GLOB, cb2);
+        eprintf(VERB_GLOB, "calculated check bits: \n");
+        print_longnum_bin(VERB_GLOB, cb1);
+
         telegram->errcode = ERR_CHECK_BITS;
         return ERR_CHECK_BITS;
     }
