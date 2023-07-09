@@ -10,7 +10,7 @@ Sources:
 * https://www.moria.us/articles/demystifying-the-lfsr/
 * Towards Modeling and Verification of Eurobalise Telegram Encoding Algorithm, Sergey Staroletov, https://www.sciencedirect.com/science/article/pii/S2352146523000728
 
-Usage: compile ss36_codec.c. This yields a command line executable (64-bit executable is included in repository) with the following command line parameters:
+Usage: compile balise_codec.c. This yields a command line executable (64-bit executable is included in repository) with the following command line parameters:
 
 -i, --input_filename <STRING>:        Read lines with data from the indicated
                                       file (UTF-8, no BOM) and convert its
