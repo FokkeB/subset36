@@ -41,8 +41,30 @@ Usage: compile balise_codec.c. This yields a command line executable (64-bit exe
  
  -f, --format_output  <STRING>:        Output format for the shaped telegram:
                                       'hex' or 'base64' (default).
+
+ -e, --show_error_codes <BOOL>        Shows the meaning of the error codes that
+                                      can be generated when checking / shaping
+                                      telegrams.
                                       
 For example: balise_codec.exe -i dummy_input.csv -o dummy_output.csv -f hex -v1
 
+# Error codes
+The error codes below can be generated when checking / shaping a telegram.
+See SUBSET-036 paragraph 4.3 for more details concerning error codes >= 10.
+Error code      Explanation
+        0       No error
+        1       No input specified
+        2       A logical error (not further specified)
+        3       Error creating output file
+        4       Error during memory allocation
+        10      Alphabet condition fails
+        11      Off-sync parsing condition fails
+        12      Aperiodicity condition fails
+        13      Undersampling check fails
+        13      Control bits check fails
+        14      Check bits check fails
+        15      Overflow of SB and ESB (should never occur, please contact author if it did)
+        16      Error during conversion from 10 bits to 11 bits (11-bit value not found in list of transformation words)
+        
 # Global description, libraries
 The library in ss36.c/h contains definitions and methods that can be used to encode and decode Eurobalise contents. Please read Subset 39 for more information and a mathematical background. The ss36-library uses another library, longnum.c/h, which deals with low level bit manipulation of long numbers (balise contents can exist of up to 1023 bits). GF2 contains binary Galois Field functions used by the ss36 library for shaping and deshaping the balise contents. The opt-library (see https://public.lanl.gov/jt/Software/, included in a zip-file) is used for parsing the command line.
