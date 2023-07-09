@@ -1,7 +1,7 @@
-# ETCS Subset 36 balise encoding and decoding
+# ETCS Subset 36 balise encoding and decoding ("balise_codec")
 Encode and decode Eurobalise contents as described in ETCS subset 36 (FFFIS for Eurobalise, v3.1.0, Dec 17th 2015)
 
-Copyright 2023, Fokke Bronsema, fokke@bronsema.net, version 1, February/March 2023
+Copyright 2023, Fokke Bronsema, fokke@bronsema.net, version 2, July 2023
 Disclaimer: use at your own risk, the author is not responsible for incorrect en-/decoded messages leading to train related mayhem.
 
 Sources:
@@ -10,7 +10,7 @@ Sources:
 * https://www.moria.us/articles/demystifying-the-lfsr/
 * Towards Modeling and Verification of Eurobalise Telegram Encoding Algorithm, Sergey Staroletov, https://www.sciencedirect.com/science/article/pii/S2352146523000728
 
-Usage: compile ss36_test.c. This yields a command line executable (64-bit executable is included in repository) with the following command line parameters:
+Usage: compile ss36_codec.c. This yields a command line executable (64-bit executable is included in repository) with the following command line parameters:
 
 -i, --input_filename <STRING>:        Read lines with data from the indicated
                                       file (UTF-8, no BOM) and convert its
@@ -42,7 +42,7 @@ Usage: compile ss36_test.c. This yields a command line executable (64-bit execut
  -f, --format_output  <STRING>:        Output format for the shaped telegram:
                                       'hex' or 'base64' (default).
                                       
-For example: ss36test -i dummy_input.csv -o dummy_output.csv -f hex -v1.
+For example: balise_codec -i dummy_input.csv -o dummy_output.csv -f hex -v1.
 
 # Global description, libraries
 The library in ss36.c/h contains definitions and methods that can be used to encode and decode Eurobalise contents. Please read Subset 39 for more information and a mathematical background. The ss36-library uses another library, longnum.c/h, which deals with low level bit manipulation of long numbers (balise contents can exist of up to 1023 bits). GF2 contains binary Galois Field functions used by the ss36 library for shaping and deshaping the balise contents. The opt-library (see https://public.lanl.gov/jt/Software/, included in a zip-file) is used for parsing the command line.
