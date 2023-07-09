@@ -28,8 +28,8 @@
 #define N_CHARS_UNSHAPED_LONG_BASE64     140    // 4 chars/3 bytes, 840 bits/8=105 bytes=140 chars. Leaves 10 bits, of which 8 are captured in trailing "=". So SHR 2 -> 830 user bits.
 #define N_CHARS_UNSHAPED_SHORT_BASE64    36     // 4 chars/3 bytes, 216 bits/8=27 bytes=36 chars. SHR 6 -> 210 user bits.
 
-#define MAX_RECORDS             0            // max# records to be read in from external file (if set to 0, infinite)
-#define MAX_ARRAY_SIZE          500          // max length of byte string read from a file (=one line)
+#define MAX_RECORDS             0				// max# records to be read in from external file (if set to 0, until memory runs out)
+#define MAX_ARRAY_SIZE          500				// max length of byte string read from a file (=one line)
 
 // prototypes:
 void align_telegram(t_telegram* telegram, enum t_align new_alignment);

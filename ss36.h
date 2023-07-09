@@ -1,6 +1,6 @@
 /**
  * SS36 - an open source library to encode and decode Eurobalise messages as described in Subset 36 (FFFIS for Eurobalise, v3.1.0, Dec 17th 2015)
- * Copyright 2023, Fokke Bronsema, fokke@bronsema.net, version 1, February/March 2023
+ * Copyright 2023, Fokke Bronsema, fokke@bronsema.net, version 2, July 2023
  * Disclaimer: use at your own risk, the author is not responsible for incorrect en-/decoded messages leading to train related mayhem.
  * 
  * Sources:
@@ -86,18 +86,18 @@ static t_longnum_layout telegram_coloring_scheme[5] =
 #define ERR_NO_ERR              0       // all OK
 #define ERR_NO_INPUT            1       // no input specified
 #define ERR_LOGICAL_ERROR       2       // a logical error has occurred
-#define ERR_SB_ESB_OVERFLOW     3       // overflow of SB and ESB
-#define ERR_11_10_BIT           4       // error during conversion
-#define ERR_OUTPUT_FILE         5       // error creating output file
-#define ERR_MEM_ALLOC           6
+#define ERR_OUTPUT_FILE         3       // error creating output file
+#define ERR_MEM_ALLOC           4
 
-// error codes from the subset 40:
+// error codes from the subset 36:
 #define ERR_ALPHABET            10
 #define ERR_OFF_SYNCH_PARSING   11
 #define ERR_APERIODICITY        12
 #define ERR_UNDER_SAMPLING      13
 #define ERR_CONTROL_BITS        14
 #define ERR_CHECK_BITS          15
+#define ERR_SB_ESB_OVERFLOW     16       // overflow of SB and ESB
+#define ERR_11_10_BIT           17       // error during conversion
 
 // function prototypes:
 

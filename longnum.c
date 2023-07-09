@@ -123,8 +123,6 @@ void long_fill(t_longnum longnum, int value)
 t_word long_get_word (t_longnum longnum, int bitnum)
 // returns the t_word at bit position bitnum [0..#BITS-1]
 // fills the highest part of the return values with 0's if the last word is requested
-// todo: add the #bits to return and mask the ones that aren't needed
-// todo: see if we can merge this with .._wraparound
 {
     int word_index, bit_index;
     t_word retval = 0;
@@ -147,7 +145,7 @@ t_word long_get_word (t_longnum longnum, int bitnum)
 }
 
 t_word long_get_word_wraparound (t_longnum longnum, int size, int bitnum)
-/** returns the t_word @ position bitnum, wraps around @ size if needed.
+/** returns the t_word @ position bitnum, wraps around @ size or bit 0 if needed.
  * 
  * description:
  * first: (bitnum mod size) to deal with bit positions outside of the telegram

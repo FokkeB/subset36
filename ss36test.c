@@ -23,6 +23,7 @@
 #include "colors.h"
 #include <opt.h>                // parse command line parameters
 #include <windows.h>            // multithreading
+#include <time.h>               // to time the execution
 
 int verbose = VERB_PROG;
 
@@ -55,9 +56,9 @@ DWORD WINAPI convert_telegram(t_telegram* p_telegram)
     {
         // first print the input:
         eprintf(VERB_GLOB, "INPUT:");
-        eprintf(VERB_GLOB, "\nUnshaped %d bytes:\n", p_telegram->number_of_userbits);
-        print_longnum_fancy(VERB_GLOB, p_telegram->contents, 16, p_telegram->number_of_shapeddata_bits, &no_colors);
-        eprintf(VERB_GLOB, "\nShaped %d bytes:\n", p_telegram->number_of_shapeddata_bits);
+        eprintf(VERB_GLOB, "\nUnshaped contents (%d bits):\n", p_telegram->number_of_userbits);
+        print_longnum_fancy(VERB_GLOB, p_telegram->deshaped_contents, 16, p_telegram->number_of_userbits, &no_colors);
+        eprintf(VERB_GLOB, "\nShaped contents (%d bits):\n", p_telegram->size);
         print_telegram_contents_fancy(VERB_GLOB, p_telegram);
 
         // check the shaped telegram:
@@ -74,10 +75,10 @@ DWORD WINAPI convert_telegram(t_telegram* p_telegram)
             eprintf(VERB_GLOB, ERROR_COLOR"NOK\n"ANSI_COLOR_RESET);
     }
     else if (get_order(p_telegram->contents) > 0)
-        // only shaped bytes; de-shape them
+        // only shaped bytes; check the telegram and de-shape it
     {
         // show the inputs and outputs:
-        eprintf(VERB_GLOB, "INPUT: Shaped telegram of %d bytes:\n", p_telegram->size);
+        eprintf(VERB_GLOB, "INPUT: Shaped telegram of %d bits:\n", p_telegram->size);
         print_telegram_contents_fancy(VERB_GLOB, p_telegram);
 
         // check the shaped telegram:
@@ -226,9 +227,9 @@ int convert_telegrams_multithreaded(t_telegram* telegrams)
         p_telegram = p_telegram->next;
     }
 
-    if (verbose == VERB_PROG)
+ //   if (verbose == VERB_PROG)
     // clear the progress line
-        eprintf(VERB_PROG, "\r");        
+        eprintf(VERB_PROG, "\n");        
 
     // all telegrams have been / are being parsed, wait for our threads to finish:
     // WaitForMultipleObjects does not work here as some thread handles may be NULL
@@ -237,7 +238,7 @@ int convert_telegrams_multithreaded(t_telegram* telegrams)
             if (WaitForSingleObject(hThreadArray[thread_index], INFINITE) != WAIT_OBJECT_0)
                 eprintf(VERB_QUIET, ERROR_COLOR"Error"ANSI_COLOR_RESET" waiting for thread to finish. Handle = % p.", hThreadArray[thread_index]);
 
-    eprintf(VERB_GLOB, "\nReady parsing %d telegram(s).\n", counter);
+//    eprintf(VERB_GLOB, "\nReady parsing %d telegram(s).\n", counter);
 
     return counter;
 }
@@ -247,9 +248,10 @@ void output_telegrams(t_telegram* first_telegram, char* format, char* output_to)
 // Otherwise output to a csv-file with name output_to
 {
     t_telegram* p_telegram = first_telegram;    // pointer to walk through the linked list of telegrams
-    char line[500] = { 0 }, b64string[200] = {0}, arr[200] = {0}; 
+    char line[500], b64string[200] = {0}, arr[200] = {0}; 
     FILE* fp = NULL;
     int i;
+    #define CSV_SEPARATOR ";"
 
     // open file and/or print header:
     if (output_to != NULL)
@@ -265,7 +267,7 @@ void output_telegrams(t_telegram* first_telegram, char* format, char* output_to)
         else
         {
             eprintf(VERB_GLOB, "Writing output to file: '%s'.\n", output_to);
-            fputs("deshaped,shaped,errorcode\n", fp);
+            fputs("deshaped"CSV_SEPARATOR"shaped"CSV_SEPARATOR"errorcode\n", fp);
         }
     }
     else
@@ -277,8 +279,7 @@ void output_telegrams(t_telegram* first_telegram, char* format, char* output_to)
     {
         align_telegram(p_telegram, a_enc);
         i = sprint_longnum_hex(line, p_telegram->deshaped_contents, p_telegram->number_of_userbits);
-        line[i] = ',';
-        line[i + 1] = 0;
+        strcat(line,CSV_SEPARATOR);
  
         if ( (format != NULL) && (strcmp(format, "hex") == 0) )
             sprint_longnum_hex(&line[i+1], p_telegram->contents, p_telegram->size);
@@ -288,8 +289,7 @@ void output_telegrams(t_telegram* first_telegram, char* format, char* output_to)
             b64_encode(arr, (p_telegram->size+8)/8, b64string);
             strcat(line, b64string);
         }
-
-        sprintf (&line[strlen(line)], ",%d\n", p_telegram->errcode);
+        sprintf (&line[strlen(line)], CSV_SEPARATOR"%d\n", p_telegram->errcode);
         
         // output the csv-line to the indicated medium (file or screen):
         if (fp != NULL)
@@ -317,6 +317,9 @@ int main(int argc, char** argv)
     int force_multi = 0;                // set to true, this will force the use of multithreading, even when verbosity level > 0 (will lead to garbled output)
 //    int force_long = 0;               // force long format for shaped telegrams
     int help = 0;                       // show help msg
+    int show_err = 0;                   // show the meaning of the error codes
+    clock_t start, end;
+    double execution_time;
 
     setupConsole();  // for colorful output
 
@@ -329,6 +332,7 @@ int main(int argc, char** argv)
     optrega(&force_multi, OPT_BOOL, 'm', "multithread", "Force multithreading at verbosity > 1 (this will lead to garbled output of different processes interrupting each other). Multithreading is enabled by default for verbosity <= 1.");
 //    optrega(&force_long, OPT_BOOL, 'l', "force_long", "Force shaping to the long format, even if the unshaped data is of short format. If not specified, SS39 will use the same format as the input data.");
     optrega(&output_format, OPT_STRING, 'f', "format_output", "Output format for the shaped telegram: 'hex' or 'base64' (default).");
+    optrega(&show_err, OPT_BOOL, 'e', "show_error_codes", "Shows the meaning of the error codes that can be generated when checking / shaping telegrams.");
     optVersion("1");
 // todo: add force_long
  
@@ -341,8 +345,30 @@ int main(int argc, char** argv)
         return ERR_NO_ERR;
     }
 
+    if (show_err)
+    // show the meaning of the error messages and die
+    {
+        printf("The error codes below can be generated when checking / shaping a telegram. \nSee SUBSET-036 paragraph 4.3 for more details concerning error codes >= 10.\n");
+        printf("Error code\tExplanation\n");
+        printf("\t0\tNo error\n");
+        printf("\t1\tNo input specified\n");
+        printf("\t2\tA logical error (not further specified)\n");
+        printf("\t3\tError creating output file\n");
+        printf("\t4\tError during memory allocation\n");
+        printf("\t10\tAlphabet condition fails\n");
+        printf("\t11\tOff-sync parsing condition fails\n");
+        printf("\t12\tAperiodicity condition fails\n");
+        printf("\t13\tUndersampling check fails\n");
+        printf("\t13\tControl bits check fails\n");
+        printf("\t14\tCheck bits check fails\n");
+        printf("\t15\tOverflow of SB and ESB (should never occur, please contact author if it did)\n");
+        printf("\t16\tError during conversion from 10 bits to 11 bits (11-bit value not found in list of transformation words)\n");
+
+        return ERR_NO_ERR;
+    }
+
     // execute the commands from the command line:
-    
+
     // first get the input (either input file or literal)
     if (input_file != NULL)
     // filename is set, load the data from the file:
@@ -353,12 +379,18 @@ int main(int argc, char** argv)
             eprintf(VERB_QUIET, ERROR_COLOR"ERROR: No input specified, quitting.\n"ANSI_COLOR_RESET);
             exit(ERR_NO_INPUT);
         }
-     
+
+    start = clock();
+
     // convert the input to the other format or check the correctness of a telegram:
     if ( (force_multi || (verbose <= VERB_PROG)) && (literal == NULL) )
         result = convert_telegrams_multithreaded(telegrams);
     else
         result = convert_telegrams_singlethreaded(telegrams);
+
+    end = clock();
+    execution_time = ((double)(end - start)) / CLOCKS_PER_SEC;
+    eprintf(VERB_QUIET, "Calculation time: %.2f secs\n", execution_time);
 
     // output the telegrams:
     output_telegrams(telegrams, output_format, output_file);
@@ -366,8 +398,8 @@ int main(int argc, char** argv)
     // destroy the telegrams:
     destroy_telegrams(telegrams);
 
-    eprintf(VERB_QUIET, "Ready. Press any key to continue ...");
-    char dummy = getch();
+//    eprintf(VERB_QUIET, "Ready. Press any key to continue ...");
+//    char dummy = getch();
 
     restoreConsole();
 

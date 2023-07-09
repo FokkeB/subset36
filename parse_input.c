@@ -187,8 +187,11 @@ t_telegram* parse_input_line(char* line)
 
     create_new_telegram(&telegram, line);
 
-    // see if there is a comma. If so: read in both values
+    // see if there is a comma or semicolon. If so: read in both values
     p = strchr(line, ',');
+    if (p == NULL)
+        p = strchr(line, ';');
+
     if (p != NULL)
     {
         *p = '\0';     // terminate the string at the comma
@@ -213,14 +216,15 @@ t_telegram* parse_input_line(char* line)
 
     if (telegram->number_of_userbits)
     // the unshaped data is set, print it
+        // TODO: show correctly (first bits aren't shown)
     {
-        eprintf(VERB_ALL, "\nDecoded %d bits:\t", telegram->number_of_userbits);
+        eprintf(VERB_ALL, "\nDecoded %d bits:\n", telegram->number_of_userbits);
         print_longnum_fancy(VERB_ALL, telegram->deshaped_contents, 16, telegram->number_of_userbits, &no_colors);
     }
     if (telegram->number_of_shapeddata_bits)
     // shaped data is set, print it
     {
-        eprintf(VERB_ALL, "\nCoded %d bits:\t\t", telegram->size);
+        eprintf(VERB_ALL, "\nCoded %d bits:\n", telegram->size);
         print_longnum_fancy(VERB_ALL, telegram->contents, 16, telegram->size, &no_colors);
     }
 
