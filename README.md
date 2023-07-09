@@ -42,7 +42,7 @@ Usage: compile balise_codec.c. This yields a command line executable (64-bit exe
  -f, --format_output  <STRING>:        Output format for the shaped telegram:
                                       'hex' or 'base64' (default).
                                       
-For example: balise_codec -i dummy_input.csv -o dummy_output.csv -f hex -v1.
+For example: balise_codec.exe -i dummy_input.csv -o dummy_output.csv -f hex -v1
 
 # Global description, libraries
 The library in ss36.c/h contains definitions and methods that can be used to encode and decode Eurobalise contents. Please read Subset 39 for more information and a mathematical background. The ss36-library uses another library, longnum.c/h, which deals with low level bit manipulation of long numbers (balise contents can exist of up to 1023 bits). GF2 contains binary Galois Field functions used by the ss36 library for shaping and deshaping the balise contents. The opt-library (see https://public.lanl.gov/jt/Software/, included in a zip-file) is used for parsing the command line.
