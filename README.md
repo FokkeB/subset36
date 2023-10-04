@@ -22,56 +22,57 @@ Usage: compile balise_codec.c. This yields a command line executable (64-bit exe
                                       If both the shaped and unshaped data are
                                       given on one line (separated by a comma),
                                       SS39 will check the correct shaping.
-                                      Comments must be preceded by '#'.
- -o, --output_filename <STRING>       Write output to this file.
+                                      Comments must be preceded by '#'.<br>
+ -o, --output_filename <STRING>       Write output to this file.<br>
  -s, --string         <STRING>        Input string (shaped and/or deshaped
                                       string in base64/hex), format identical to
-                                      one line in the input file.
+                                      one line in the input file.<br>
  -v, --verbose        <INT>           Level of verbosity: 0 (quiet, only show
                                       result), 1 (+show progress, default), 2
-                                      (+basic output) or 3 (+lots of output).
+                                      (+basic output) or 3 (+lots of output).<br>
  -m, --max_cpu        <INT>           Max nr of cpu's to use. Multithreading is
                                       enabled by default for verbosity <= 1 or
-                                      if set to 0.
+                                      if set to 0.<br>
  -l, --force_long     <BOOL>          Force shaping to the long format (1023
                                       bits), even if the unshaped data is of
                                       short format (341 bits). If not specified,
                                       this tool will use the same format as the
-                                      input data.
+                                      input data.<br>
  -f, --format_output  <STRING>        Output format for the shaped telegram:
-                                      'hex' or 'base64' (default).
+                                      'hex' or 'base64' (default).<br>
  -e, --show_error_codes <BOOL>        Shows the meaning of the error codes that
                                       can be generated when checking / shaping
-                                      telegrams.
+                                      telegrams.<br>
  -E, --error_only     <BOOL>          Output only the telegrams in which an
                                       error was found (-e gives the error
-                                      codes).
+                                      codes).<br>
  -T, --run_tests      <BOOL>          Run various tests to check the workings of
                                       this program, using input from the input
                                       file. This tool uses lines from the input
                                       files containing both decoded and encoded
-                                      contents.
+                                      contents.<br>
                                       
-For example: balise_codec.exe -i dummy_input.csv -o dummy_output.csv -f hex -v1
+For example: balise_codec.exe -i dummy_input.csv -o dummy_output.csv -f hex -v1<br>
 
 # Error codes
 The error codes below can be generated when checking / shaping a telegram.
-See SUBSET-036 paragraph 4.3 for more details concerning error codes >= 10.
-Error code      Explanation
-        0       No error
-        1       No input specified
-        2       A logical error (not further specified)
-        3       Error creating output file
-        4       Error during memory allocation
-        10      Alphabet condition fails
-        11      Off-sync parsing condition fails
-        12      Aperiodicity condition fails
-        13      Undersampling check fails
-        14      Control bits check fails
-        15      Check bits check fails
-        16      Overflow of SB and ESB (should never occur, please contact author if it did)
-        17      Error during conversion from 10 bits to 11 bits (11-bit value not found in list of transformation words)
-        18      Shaped contents do not match the unshaped contents (encoding error)    
+See SUBSET-036 paragraph 4.3 for more details concerning error codes >= 10.<br>
+<br>
+Error code      Explanation<br>
+        0       No error<br>
+        1       No input specified<br>
+        2       A logical error (not further specified)<br>
+        3       Error creating output file<br>
+        4       Error during memory allocation<br>
+        10      Alphabet condition fails<br>
+        11      Off-sync parsing condition fails<br>
+        12      Aperiodicity condition fails<br>
+        13      Undersampling check fails<br>
+        14      Control bits check fails<br>
+        15      Check bits check fails<br>
+        16      Overflow of SB and ESB (should never occur, please contact author if it did)<br>
+        17      Error during conversion from 10 bits to 11 bits (11-bit value not found in list of transformation words)<br>
+        18      Shaped contents do not match the unshaped contents (encoding error)<br>
 		
 # Global description, libraries
 The library in ss36.c/h contains definitions and methods that can be used to encode and decode Eurobalise contents. 
