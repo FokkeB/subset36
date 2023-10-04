@@ -1,13 +1,13 @@
 /**
-* This file is part of SS36.
-* SS36 is free software: you can distribute it and/or modify it under the terms of the GNU Lesser General Public License as
+* This file is part of "balise_codec".
+* balise_codec is free software: you can distribute it and/or modify it under the terms of the GNU Lesser General Public License as
 * published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
-* This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
+* This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
 * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 *
 * See the GNU Lesser General Public License for more details.
 * You should have received a copy of the GNU General Public License along with this program.
-* If not, see < https://www.gnu.org/licenses/>. 
+* If not, see < https://www.gnu.org/licenses/>.
 */
 
 #include <stdio.h>
@@ -28,8 +28,11 @@ unsigned int hex_to_bin (char *hexstr, unsigned char *binstr)
 
     for (int i=0; i<strlen(hexstr); i++)
     {
-        if (i%2==0) 
-            w = i/2;
+        if (i % 2 == 0)
+        {
+            w = i / 2;
+            binstr[w] = 0;
+        }
         else
             binstr[w] <<= 4;
 
@@ -46,8 +49,7 @@ unsigned int hex_to_bin (char *hexstr, unsigned char *binstr)
 
 void align_telegram(t_telegram* telegram, enum t_align new_alignment)
 /** shifts the telegram contents n bits to the left to prepare for hex/base64 - encoding
-* n depends on the telegram size:
-*
+* n depends on the telegram size
 */
 {
     if (telegram->alignment == new_alignment)
@@ -119,28 +121,28 @@ int parse_input (char* input, t_telegram* telegram)
         case N_CHARS_UNSHAPED_LONG_HEX :
             bitlength = BITLENGTH_LONG_TELEGRAM;
             p_ln = &telegram->deshaped_contents;
-            telegram->number_of_userbits = USERBITS_IN_TELEGRAM_L;
+            telegram->number_of_userbits = N_USERBITS_L;
             size = hex_to_bin(input, arr);
             break;
 
         case N_CHARS_UNSHAPED_SHORT_HEX:
             bitlength = BITLENGTH_SHORT_TELEGRAM;
             p_ln = &telegram->deshaped_contents;
-            telegram->number_of_userbits = USERBITS_IN_TELEGRAM_S;
+            telegram->number_of_userbits = N_USERBITS_S;
             size = hex_to_bin(input, arr);
             break;
 
         case N_CHARS_UNSHAPED_LONG_BASE64 :
             bitlength = BITLENGTH_LONG_TELEGRAM;
             p_ln = &telegram->deshaped_contents;
-            telegram->number_of_userbits = USERBITS_IN_TELEGRAM_L;
+            telegram->number_of_userbits = N_USERBITS_L;
             size = b64_decode(input, strlen(input), arr);
             break;
 
         case N_CHARS_UNSHAPED_SHORT_BASE64 :
             bitlength = BITLENGTH_SHORT_TELEGRAM;
             p_ln = &telegram->deshaped_contents;
-            telegram->number_of_userbits = USERBITS_IN_TELEGRAM_S;
+            telegram->number_of_userbits = N_USERBITS_S;
             size = b64_decode(input, strlen(input), arr);
             break;
 
@@ -173,9 +175,9 @@ t_telegram* parse_input_line(char* line)
     else
         p = &(line[strlen(line)]);
 
-    // then clear trailing spaces, CR's, LF's, tabs
+    // then clear trailing spaces, CR's, LF's, tabs, separators
     p--;
-    while ((*p == '\n') || (*p == '\r') || (*p == ' ') || (*p == '\t') )
+    while ((*p == '\n') || (*p == '\r') || (*p == ' ') || (*p == '\t') || (*p == ';') || (*p == ','))
     {
         *p = '\0';
         p--;
@@ -188,6 +190,7 @@ t_telegram* parse_input_line(char* line)
     create_new_telegram(&telegram, line);
 
     // see if there is a comma or semicolon. If so: read in both values
+//    printf("\n\n;%d    ,%d\n\n", *strchr(line, ';'), *strchr(line, ','));
     p = strchr(line, ',');
     if (p == NULL)
         p = strchr(line, ';');
@@ -216,16 +219,15 @@ t_telegram* parse_input_line(char* line)
 
     if (telegram->number_of_userbits)
     // the unshaped data is set, print it
-        // TODO: show correctly (first bits aren't shown)
     {
         eprintf(VERB_ALL, "\nDecoded %d bits:\n", telegram->number_of_userbits);
-        print_longnum_fancy(VERB_ALL, telegram->deshaped_contents, 16, telegram->number_of_userbits, &no_colors);
+        long_print_fancy(VERB_ALL, telegram->deshaped_contents, 16, telegram->number_of_userbits+6, NULL); 
     }
     if (telegram->number_of_shapeddata_bits)
     // shaped data is set, print it
     {
         eprintf(VERB_ALL, "\nCoded %d bits:\n", telegram->size);
-        print_longnum_fancy(VERB_ALL, telegram->contents, 16, telegram->size, &no_colors);
+        long_print_fancy(VERB_ALL, telegram->contents, 16, telegram->size, NULL); 
     }
 
     return telegram;
@@ -261,7 +263,7 @@ t_telegram* read_from_file_into_list (char *filename, int *telegramcount)
     *telegramcount = 0;
 
     // read all lines from the file
-    while ( ( (p=fgets(line, MAX_ARRAY_SIZE, fp)) != NULL) && ( (*telegramcount < MAX_RECORDS) || ((MAX_RECORDS == 0)) ) )
+    while ( ( (p=fgets(line, MAX_ARRAY_SIZE, fp)) != NULL) ) // && ( (*telegramcount < MAX_RECORDS) || ((MAX_RECORDS == 0)) ) )
     // parse the line read from the file:
     {
         linecount++;

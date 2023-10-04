@@ -1,6 +1,6 @@
 /**
-* This file is part of SS36.
-* SS36 is free software: you can distribute it and/or modify it under the terms of the GNU Lesser General Public License as
+* This file is part of "balise_codec".
+* balise_codec is free software: you can distribute it and/or modify it under the terms of the GNU Lesser General Public License as
 * published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
 * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
 * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -21,6 +21,8 @@ void print_hex (int v, unsigned char *bin, unsigned int n)
 {
     int i;
 
+    return_if_silent(v);
+
     for (i=0; i<n; i++)
     {
         eprintf (v, "%02X", bin[i]);
@@ -36,8 +38,10 @@ void print_bin (int v, uint64_t printme, int n)
 {
     int i;
 
+    return_if_silent(v);
+
     if ((n <= 0) || (n > sizeof(printme)*8))
-        n= sizeof(printme);
+        n = sizeof(printme);
 
     for (i=n-1; i>=0; i--)  
     {

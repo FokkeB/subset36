@@ -1,6 +1,6 @@
 /**
- * SS36 - an open source library to encode and decode Eurobalise messages as described in Subset 36 (FFFIS for Eurobalise, v3.1.0, Dec 17th 2015)
- * Copyright 2023, Fokke Bronsema, fokke@bronsema.net, version 2, July 2023
+ * balise_codec - an open source library to encode and decode Eurobalise messages as described in Subset 36 (FFFIS for Eurobalise, v3.1.0, Dec 17th 2015)
+ * Copyright 2023, Fokke Bronsema, fokke@bronsema.net, version 3, October 4th 2023
  * Disclaimer: use at your own risk, the author is not responsible for incorrect en-/decoded messages leading to train related mayhem.
  * 
  * Sources:
@@ -31,30 +31,28 @@
 
 #define BITLENGTH_LONG_TELEGRAM     1023            // length of long telegram
 #define BITLENGTH_SHORT_TELEGRAM    341             // length of short telegram
-#define USERBITS_IN_TELEGRAM_L      830             // number of unscrambled user bits in long telegram
-#define USERBITS_IN_TELEGRAM_S      210             // number of unscrambled user bits in short telegram
 
-typedef uint32_t t_S;                // type of S, the initial state of shift register
-typedef t_longnum t_checkbits;       // lower 85 bits are the "check bits"
-typedef uint32_t t_esb;              // lower 10 bits are the "extra shaping bits"
-typedef uint32_t t_sb;               // lower 12 bits are the "scrambling bits"
-typedef uint32_t t_cb;                // lower 3 bits are the "control bits"
+typedef t_word t_S;                // type of S, the initial state of shift register
+typedef t_longnum t_checkbits;     // lower 85 bits are the "check bits"
+typedef t_word t_esb;              // lower 10 bits are the "extra shaping bits"
+typedef t_word t_sb;               // lower 12 bits are the "scrambling bits"
+typedef t_word t_cb;               // lower 3 bits are the "control bits"
 
-#define N_CHECKBITS         85
-#define N_ESB               10
-#define N_SB                12
-#define N_CB                3
-#define N_USERBITS_L        830
-#define N_USERBITS_S        210
-#define N_SHAPEDDATA_L      913     
-#define N_SHAPEDDATA_S      231    
+#define N_CHECKBITS         85      // Nr. of checkbits
+#define N_ESB               10      // Nr. of extra shaping buts
+#define N_SB                12      // Nr. of shaping bits
+#define N_CB                3       // Nr. of control nits
+#define N_USERBITS_L        830     // number of unscrambled user bits in long telegram
+#define N_USERBITS_S        210     // number of unscrambled user bits in short telegram
+#define N_SHAPEDDATA_L      913     // number of shaped user bits in long telegram
+#define N_SHAPEDDATA_S      231     // number of shaped user bits in short telegram
 #define OFFSET_SHAPED_DATA  N_CHECKBITS + N_ESB + N_SB + N_CB
 
 #define CONTROL_BITS                1       // three bits, value 001 [b109..b107]
 #define MAGIC_WORD                  0xFAB   // My initials in 12 bits ;-)
 
 enum t_size { s_short = BITLENGTH_SHORT_TELEGRAM, s_long = BITLENGTH_LONG_TELEGRAM };
-enum t_align { a_enc = 0, a_calc = 1 };
+enum t_align { a_undef = 0, a_enc = 1, a_calc = 2 };   // a_undef means undefined coding; a_enc means coding used for reading/writing to disk; a_calc means coding used in calculations
 
 typedef struct t_telegram 
 {
@@ -98,6 +96,7 @@ static t_longnum_layout telegram_coloring_scheme[5] =
 #define ERR_CHECK_BITS          15
 #define ERR_SB_ESB_OVERFLOW     16       // overflow of SB and ESB
 #define ERR_11_10_BIT           17       // error during conversion
+#define ERR_CONTENT             18       // shaped content does not match unshaped content
 
 // function prototypes:
 
@@ -106,6 +105,7 @@ void create_new_telegram(t_telegram** telegram, char* inputstr);
 void destroy_telegram(t_telegram* telegram);
 void destroy_telegrams(t_telegram* telegram);
 void init_telegram (t_telegram *telegram, int size);
+void make_long(t_telegram* telegrams);
 void set_checkbits (t_longnum contents, t_checkbits checkbits);
 void get_checkbits (t_longnum contents, t_longnum checkbits);
 void set_extra_shaping_bits (t_longnum contents, t_esb esb);
@@ -116,7 +116,6 @@ void set_control_bits (t_longnum contents, int cb);
 t_cb get_control_bits (t_longnum contents);
 void set_shaped_data (t_longnum contents, t_longnum sd);
 void get_shaped_data (t_telegram *telegram, t_longnum sd);
-void fill_user_bits_random (t_longnum userbits, int m);
 void print_telegram_contents_fancy(int v, t_telegram* telegram);
 int count_telegrams(t_telegram* p_telegram);
 
@@ -136,7 +135,7 @@ void deshape(t_telegram* telegram, t_longnum userdata);
 // functions needed to perform the tests of candidate telegrams (see subset 36, 4.3.2.5):
 int check_alphabet_condition(t_telegram* telegram);
 int check_off_synch_parsing_condition (t_telegram *telegram);
-int calc_hamming_distance (t_word word1, t_word word2, int n);  // part of aperiodicity condition
+int calc_hamming_distance (t_word word1, t_word word2);  // part of aperiodicity condition
 int check_aperiodicity_condition (t_telegram *telegram);
 int check_undersampling_condition (t_telegram *telegram);
 int check_control_bits(t_telegram* telegram);
@@ -146,6 +145,7 @@ int test_candidate_telegram(int v, t_telegram* telegram, int* err_location);
 int check_control_bits(t_telegram* telegram);
 int check_check_bits(t_telegram* telegram);
 int check_shaped_telegram(t_telegram* telegram);
+int check_shaped_deshaped(t_telegram* telegram);
 
 // words used to perform the transformation described in Subset 36 (see ss36.c).
 // copied directly from subset 36, appendix B2: The 10-to-11 bit Transformation Substitution Words.
@@ -163,7 +163,7 @@ static unsigned int transformation_words[N_TRANS_WORDS] = {
 00226, 00231, 00233, 00244, 00245, 00246, 00253, 00257, 00260, 00261,
 00272, 00273, 00274, 00275, 00276, 00301, 00303, 00315, 00317, 00320,
 00321, 00332, 00334, 00341, 00342, 00343, 00344, 00346, 00352, 00353,
-00357, 00360, 00374, 00376, 00401, 00403, 00404, 00405, 00406, 00407,
+00357, 00360, 00374, 00376, 00401, 00403, 00404, 00405, 00406, 00407,   // word#104=00401 is first word to start with 0b001, see set_next_sb_esb in ss36.c
 00410, 00411, 00412, 00413, 00416, 00417, 00420, 00424, 00425, 00426,
 00427, 00432, 00433, 00442, 00443, 00445, 00456, 00457, 00460, 00461,
 00464, 00465, 00470, 00471, 00472, 00474, 00475, 00476, 00501, 00502,
@@ -179,7 +179,7 @@ static unsigned int transformation_words[N_TRANS_WORDS] = {
 00722, 00723, 00730, 00731, 00732, 00733, 00734, 00735, 00742, 00743,
 00744, 00745, 00746, 00747, 00750, 00751, 00752, 00753, 00754, 00755,
 00756, 00757, 00760, 00761, 00764, 00765, 00766, 00767, 00772, 00773,
-00776, 01001, 01004, 01005, 01016, 01017, 01020, 01021, 01022, 01023,
+00776, 01001, 01004, 01005, 01016, 01017, 01020, 01021, 01022, 01023,   // word#260=00776 is last word to start with 0b001, see set_next_sb_esb in ss36.c
 01024, 01025, 01030, 01031, 01032, 01033, 01034, 01035, 01043, 01044,
 01045, 01046, 01047, 01054, 01057, 01060, 01061, 01062, 01075, 01076,
 01101, 01102, 01103, 01110, 01114, 01115, 01116, 01117, 01120, 01121,

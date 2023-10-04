@@ -1,6 +1,6 @@
 /**
-* This file is part of SS36.
-* SS36 is free software: you can distribute it and/or modify it under the terms of the GNU Lesser General Public License as
+* This file is part of "balise_codec".
+* balise_codec is free software: you can distribute it and/or modify it under the terms of the GNU Lesser General Public License as
 * published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
 * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
 * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -28,6 +28,12 @@ extern int verbose;  // global variable to be set in the file that includes this
 #define eprintf(level, ...) do {            \
     if (level<=verbose)                     \
         fprintf (stderr, __VA_ARGS__);      \
+    } while (0)
+
+// exits the current function if the requested verbosity level is too large. To be used in functions that do nothing else than printing.
+#define return_if_silent(level) do {        \
+    if (level>verbose)                      \
+        return;                             \
     } while (0)
 
 void print_hex(int v, unsigned char* bin, unsigned int n);

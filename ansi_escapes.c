@@ -1,6 +1,6 @@
 /**
 * File copied from https://github.com/sol-prog/ansi-escape-codes-windows-posix-terminals-c-programming-examples
-* Included in SS36 unmodified except for this header.
+* Included in "balise_codec" unmodified except for this header.
 */
 
 #ifdef _WIN32

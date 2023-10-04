@@ -1,6 +1,6 @@
 /**
-* This file is part of SS36.
-* SS36 is free software: you can distribute it and/or modify it under the terms of the GNU Lesser General Public License as
+* This file is part of "balise_codec".
+* balise_codec is free software: you can distribute it and/or modify it under the terms of the GNU Lesser General Public License as
 * published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
 * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
 * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -41,7 +41,5 @@ typedef struct
     int start, length;              // startbit and length of color
     char color[MAX_COLOR_LENGTH];   // color to use (ANSI definition)
 } t_longnum_layout;
-
-extern t_longnum_layout no_colors;      // use as default, when no coloring is needed
 
 #endif

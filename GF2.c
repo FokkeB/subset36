@@ -1,7 +1,6 @@
-
 /**
-* This file is part of SS36.
-* SS36 is free software: you can distribute it and/or modify it under the terms of the GNU Lesser General Public License as
+* This file is part of "balise_codec".
+* balise_codec is free software: you can distribute it and/or modify it under the terms of the GNU Lesser General Public License as
 * published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
 * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
 * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -32,7 +31,7 @@ uint32_t mod2_multiply(uint32_t p, uint32_t q) {
 */
 {
     int i;
-    t_longnum ln_tmp1, ln_tmp2;
+    t_longnum ln_tmp; 
 
     // clear all bits in longnumresult:
     long_fill (result, 0);
@@ -42,16 +41,16 @@ uint32_t mod2_multiply(uint32_t p, uint32_t q) {
     {
         if (long_get_bit(q, i)) 
         {
-            long_copy (ln_tmp1, p);
-            long_shiftleft (ln_tmp1, i);
-            long_xor (result, ln_tmp1, ln_tmp2);
-            long_copy (result, ln_tmp2);
+            long_copy (ln_tmp, p);
+            long_shiftleft (ln_tmp, i);
+            long_xor(result, ln_tmp, result);
         }    
     }
 }
 
 void GF2_division (t_longnum p, t_longnum q, t_longnum quotient, t_longnum remainder)
 // performs a GF2-division of p / q, fills quotient and remainder
+// returns without doing anything if divider q==0
 
 /*
 // From https://www.moria.us/articles/demystifying-the-lfsr/:
@@ -74,7 +73,7 @@ struct division_result mod2_divide(uint32_t p, uint32_t q) {
   };
 }*/
 {
-    int q_order = get_order (q);
+    int q_order = long_get_order (q);
     
     // check that the divisor != 0, do nothing if it is
     if (q_order == 0)
@@ -86,9 +85,9 @@ struct division_result mod2_divide(uint32_t p, uint32_t q) {
     // copy contents of p into remainder
     long_copy (remainder, p);
         
-    int remainder_order = get_order (p);
+    int remainder_order = long_get_order (p);
     int shift = 0;
-    t_longnum q_calc, ln_temp;
+    t_longnum q_calc; 
 
     while (remainder_order >= q_order)
     {
@@ -96,11 +95,9 @@ struct division_result mod2_divide(uint32_t p, uint32_t q) {
 
         long_copy (q_calc, q);
         long_shiftleft (q_calc, shift);
-        long_xor (remainder, q_calc, ln_temp);
-        long_copy (remainder, ln_temp);
-
+        long_xor(remainder, q_calc, remainder); 
         long_setbit (quotient, shift, 1);
 
-        remainder_order = get_order (remainder);
+        remainder_order = long_get_order (remainder);
     }
 }
