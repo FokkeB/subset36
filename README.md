@@ -1,6 +1,3 @@
-<!-- my-page.html --> 
-<script src="https://rawcdn.githack.com/oscarmorrison/md-page/232e97938de9f4d79f4110f6cfd637e186b63317/md-page.js"></script><noscript>
-
 ##ETCS Subset 36 balise encoding and decoding ("balise_codec")
 
 Encode and decode Eurobalise contents as described in ETCS subset 36 (FFFIS for Eurobalise, v3.1.0, Dec 17th 2015)
