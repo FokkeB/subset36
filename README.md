@@ -52,20 +52,20 @@ The definition of the error codes (0=OK) is given below.
 The error codes below can be generated when checking / shaping a telegram. See SUBSET-036 paragraph 4.3 for more details concerning error codes >= 10.
 
 Error code Explanation
-0 No error
-1 No input specified
-2 A logical error (not further specified)
-3 Error creating output file
-4 Error during memory allocation
-10 Alphabet condition fails
-11 Off-sync parsing condition fails
-12 Aperiodicity condition fails
-13 Undersampling check fails
-14 Control bits check fails
-15 Check bits check fails
-16 Overflow of SB and ESB (should never occur, please contact author if it did)
-17 Error during conversion from 10 bits to 11 bits (11-bit value not found in list of transformation words)
-18 Shaped contents do not match the unshaped contents (encoding error)
+- 0 No error
+- 1 No input specified
+- 2 A logical error (not further specified)
+- 3 Error creating output file
+- 4 Error during memory allocation
+- 10 Alphabet condition fails
+- 11 Off-sync parsing condition fails
+- 12 Aperiodicity condition fails
+- 13 Undersampling check fails
+- 14 Control bits check fails
+- 15 Check bits check fails
+- 16 Overflow of SB and ESB (should never occur, please contact author if it did)
+- 17 Error during conversion from 10 bits to 11 bits (11-bit value not found in list of transformation words)
+- 18 Shaped contents do not match the unshaped contents (encoding error)
 
 ### About
 The library in telegram.c/h and the related #includes contain definitions and methods that can be used to encode and decode Eurobalise contents. Please read Subset 39 for more information and a mathematical background. The ss36-library uses another library, longnum.c/h, which deals with low level bit manipulation of long numbers (balise contents can exist of up to 1023 bits), amongst which two Galois Field functions used by the ss36 library for shaping and deshaping the balise contents. The library CLI11 (see https://github.com/CLIUtils/CLI11) is used for parsing the command line. Balise_codec was developed in MS Visual Studio 2022.
