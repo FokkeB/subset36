@@ -610,10 +610,9 @@ void telegram::shape(void)
         if ((err == ERR_OFF_SYNCH_PARSING) || (err == ERR_APERIODICITY))
             if (err_location >= OFFSET_SHAPED_DATA)
             // error sequence is located completely in the shaped user data, it is therefore pointless to update the ESB
-            // solution: set word9 and word10 so that the next word10 is selected in the next run
+            // solution: set ESB to 111, so the next word 9 and if necessary word10 are selected in the next run
             {
                 contents.write_at_location(N_CHECKBITS, &esb_mask, 3);  // set the lower three bits of the ESB to 111 
-                word9 = N_TRANS_WORDS;
             }
 
     } while (err);
