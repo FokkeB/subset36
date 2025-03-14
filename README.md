@@ -1,16 +1,18 @@
 ## ETCS Subset 36 balise encoding and decoding ("balise_codec")
 
-Encode and decode Eurobalise contents as described in ETCS subset 36 (FFFIS for Eurobalise, v3.1.0, Dec 17th 2015)
+Encode and decode Eurobalise contents as described in ETCS subset 36 (FFFIS for Eurobalise, v3.1.0, Dec 17th 2015
+By Fokke Bronsema, fokke@bronsema.net, version 5, March 14th 2025 (PI DAY!), released under the GNU Lesser General Public License.
 
-Copyright 2023/2024, Fokke Bronsema, fokke@bronsema.net, version 5, March 2025.
-Disclaimer: use this software at your own risk, the author is not responsible for incorrect en-/decoded messages leading to train related mayhem. Even though this software was tested against a few thousand Dutch Eurobalises from different manufacturers, errors may still occur.
+### Disclaimer 
+Use this software at your own risk, the author is not responsible for incorrect en-/decoded messages leading to train related mayhem. Even though this software was tested against a few thousand Dutch Eurobalises from different manufacturers, errors may still occur.
 
-Sources:
+### Sources
 - https://www.era.europa.eu/system/files/2023-01/sos3_index009_-_subset-036_v310.pdf (paragraph 4.3.2)
 - https://lemmatalogic.com/lfsrscrambler/
 - https://www.moria.us/articles/demystifying-the-lfsr/
 - Towards Modeling and Verification of Eurobalise Telegram Encoding Algorithm, Sergey Staroletov, https://www.sciencedirect.com/science/article/pii/S2352146523000728
 
+### Contents
 This repository contains the following software:
 1. "ss36": this folder contains the main library of this repository. It is used by "main.cpp" to make an executable (see below);
 2. "tester": this program is created to test various functions of the library;
