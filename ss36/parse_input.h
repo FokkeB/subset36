@@ -13,7 +13,7 @@
 #ifndef PARSE_INPUT_H
 #define PARSE_INPUT_H
 
-#include "telegram.h"
+#include "telegram.h"  // include definitions of telegram and t_telegramlist
 
 // expected input sizes of shaped telegrams: 
 #define N_CHARS_SHAPED_LONG_HEX          256    // 2 char/byte, 1024 bits/8=128 bytes=256 chars. So: SHR 1 to loose 1 bit to get to 1023 bits in complete telegram.
@@ -28,13 +28,13 @@
 #define N_CHARS_UNSHAPED_SHORT_BASE64    36     // 4 chars/3 bytes, 216 bits/8=27 bytes=36 chars. SHR 6 -> 210 user bits.
 
 //#define MAX_RECORDS             0				// max# records to be read in from external file (if set to 0, until memory runs out)
-#define MAX_ARRAY_SIZE					500		// max length of byte string read from a file (=one line)
+#define MAX_ARRAY_SIZE				 	 500	// max length of byte string read from a file (=one line)
 
-#define LINE_DELIM '\n'
+#define LINE_DELIM						 '\n'
 
 // prototypes:
-t_telegramlist parse_content_string(const string& contents);
-t_telegramlist read_from_file_into_list(const string filename);
-telegram* parse_input_line(const char* line);
+telegram* parse_content_string(const string& contents, const bool force_long);
+//telegram* read_from_file_into_list(const string filename);
+telegram* parse_input_line(const char* line, const bool force_long);
 
 #endif

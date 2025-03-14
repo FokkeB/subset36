@@ -1,4 +1,3 @@
-#pragma once
 /**
 * This file is part of "balise_codec".
 * balise_codec is free software: you can distribute it and/or modify it under the terms of the GNU Lesser General Public License as
@@ -21,6 +20,8 @@ int find11(int val11);
 // copied directly from subset 36, appendix B2: The 10-to-11 bit Transformation Substitution Words.
 
 #define N_TRANS_WORDS   1024
+#define FIRST_TW_001    104 // index of first transformation word starting with 001
+#define LAST_TW_001     260 // index of last transformation word starting with 001
 
 static unsigned short int transformation_words[N_TRANS_WORDS] = {
 00101, 00102, 00103, 00104, 00105, 00106, 00107, 00110, 00111, 00112,

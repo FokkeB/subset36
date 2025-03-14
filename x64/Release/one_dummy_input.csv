@@ -1,0 +1,5 @@
+# Dummy input to demonstrate the subset 36-library. These balise contents are not compliant with subset 36 and only serve for demonstrations.;
+# Part of library for subset 36-encoding / decoding;
+
+# LINE 1: long telegram, decoded contents in hex, will be converted to a shaped telegram:;
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFC;
