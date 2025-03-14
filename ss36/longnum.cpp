@@ -346,7 +346,7 @@ void longnum::print_bin(int v)
 
     return_if_silent(v);
 
-    for (j = (order - 1) / BITS_IN_WORD; j >= 0; j--)
+    for (j = (order / BITS_IN_WORD)-1; j >= 0; j--)
     {
         printf("#%02d=", j);
         for (int i = BITS_IN_WORD - 1; i >= 0; i--)
