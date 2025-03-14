@@ -9,7 +9,7 @@ int verbose = VERB_QUIET;
 static PyObject* convert(PyObject* self, PyObject* args)
 {
     const char* orig_balise_info = NULL;
-    t_telegramlist telegrams;
+    telegram* telegrams;
     int result = 0;
     string output_string;
 
@@ -18,8 +18,8 @@ static PyObject* convert(PyObject* self, PyObject* args)
 
     eprintf(VERB_GLOB, "Received from Python:\n %s\n", orig_balise_info);
 
-    telegrams = parse_content_string((string)orig_balise_info);
-    result = convert_telegrams_multithreaded(telegrams, 1);
+    telegrams = parse_content_string((string)orig_balise_info, false);
+    result = convert_telegrams_multithreaded(telegrams, 1, false);
     output_string = output_telegrams_to_string(telegrams, "base64", false, false);
 
     eprintf(VERB_GLOB, "Returning to Python:\n %s\n", output_string.c_str());
@@ -46,7 +46,7 @@ The definition of the error codes (0=OK) is given in 'telegram.h', see the githu
 static PyModuleDef balise_codec_module = {
     PyModuleDef_HEAD_INIT,
     "balise_codec",                        
-    "'balise_codec.pyd': Python module for (de)coding ETCS Eurobalise contents, version 4, February 2024. See: https://github.com/FokkeB/subset36.",      
+    "'balise_codec.pyd': Python module for (de)coding ETCS Eurobalise contents, see: https://github.com/FokkeB/subset36. Version: " PROG_VERSION,
     0,
     balise_codec_methods                  
 };

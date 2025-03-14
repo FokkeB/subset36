@@ -10,6 +10,8 @@
 * If not, see < https://www.gnu.org/licenses/>.
 */
 
+/* this is the main program, it serves as a shell to balise_codec to add command-line interaction */
+
 #include "balise_codec.h"
 #include "CLI11.hpp"            // parse command line parameters
 
@@ -17,7 +19,7 @@ int verbose = VERB_PROG;
 
 int main(int argc, char** argv)
 {
-    t_telegramlist telegrams;           // list of telegrams
+    telegram* telegrams = NULL;         // first in the list of telegrams
     int result = ERR_NO_ERR;            // end result of this program (0=success)
     clock_t start, end;
     double execution_time;
@@ -32,6 +34,7 @@ int main(int argc, char** argv)
     bool force_long = false;            // force long format for shaped telegrams
     bool show_err = false;              // show the meaning of the error codes
     bool error_only = false;            // only show output lines that contain an error
+    bool calc_all = false;              // calculate all possible telegrams for each given input telegram
 
     setupConsole();  // for colorful output
 
@@ -46,30 +49,33 @@ int main(int argc, char** argv)
     app.add_option("-f,--format_output", output_format, "Output format for the shaped telegram: 'hex' or 'base64' (default).");
     app.add_flag("-e,--show_error_codes", show_err, "Shows the meaning of the error codes that can be generated when checking / shaping telegrams.");
     app.add_flag("-E,--error_only", error_only, "Output only the telegrams in which an error was found (-e gives the error codes).");
+    app.add_flag("-a,--all", calc_all, "Calculate all possible telegrams for each input telegram. If not specified, calculations will stop at first telegram. Currently only works with option -m1.");
+
     CLI11_PARSE(app, argc, argv);
 
     if (show_err)
         // show the meaning of the error messages and die
     {
         printf("The error codes below can be generated when checking / shaping a telegram. \n");
-        printf("See SUBSET - 036 paragraph 4.3 for more details concerning error codes >= 10.\n");
-        printf("Increase verbosity to 2 to see detailed information about the errors found during conversion.\n");
+        printf("See SUBSET-036 paragraph 4.3 for more details concerning error codes >= 100.\n");
+        printf("Increase verbosity to 2 (option -v2) to see detailed information about the errors found during conversion.\n");
         printf("Error code\tExplanation\n");
-        printf("\t0\tNo error\n");
-        printf("\t1\tNo input specified\n");
-        printf("\t2\tA logical error (not further specified)\n");
-        printf("\t3\tError creating output file\n");
-        printf("\t4\tError during memory allocation\n");
-        printf("\t10\tAlphabet condition fails\n");
-        printf("\t11\tOff-sync parsing condition fails\n");
-        printf("\t12\tAperiodicity condition fails\n");
-        printf("\t13\tUndersampling check fails\n");
-        printf("\t14\tControl bits check fails\n");
-        printf("\t15\tCheck bits check fails\n");
-        printf("\t16\tOverflow of SB and ESB (should never occur, please contact author if it did)\n");
-        printf("\t17\tError during conversion from 10 bits to 11 bits (11-bit value not found in list of transformation words)\n");
-        printf("\t18\tShaped contents do not match the unshaped contents (encoding error)\n");
-
+        printf("\t%d\tNo error\n", ERR_NO_ERR);
+        printf("\t%d\tA logical error (not further specified)\n", ERR_LOGICAL_ERROR);
+        printf("\t%d\tError during memory allocation\n", ERR_MEM_ALLOC);
+        printf("\t%d\tError in input\n", ERR_INPUT_ERROR);
+        printf("\t%d\tNo input specified\n", ERR_NO_INPUT);
+        printf("\t%d\tError creating output file\n", ERR_OUTPUT_FILE);
+        printf("\t%d\tError spawning sub process\n", ERR_PROCESS_CREATE);
+        printf("\t%d\tAlphabet condition fails\n", ERR_ALPHABET);
+        printf("\t%d\tOff-sync parsing condition fails\n", ERR_OFF_SYNC_PARSING);
+        printf("\t%d\tAperiodicity condition fails\n", ERR_APERIODICITY);
+        printf("\t%d\tUndersampling check fails\n", ERR_UNDER_SAMPLING);
+        printf("\t%d\tControl bits check fails\n", ERR_CONTROL_BITS);
+        printf("\t%d\tCheck bits check fails\n", ERR_CHECK_BITS);
+        printf("\t%d\tOverflow of SB and ESB (should never occur, please contact author if it did)\n", ERR_SB_ESB_OVERFLOW);
+        printf("\t%d\tError during conversion from 10 bits to 11 bits (11-bit value not found in list of transformation words)\n", ERR_11_10_BIT);
+        printf("\t%d\tShaped contents do not match the unshaped contents (encoding error)\n", ERR_CONTENT);
         return ERR_NO_ERR;
     }
 
@@ -81,23 +87,23 @@ int main(int argc, char** argv)
         // filename is set, load the data from the file:
         //telegrams = load_telegrams_from_file(input_file);
 
-        telegrams = parse_content_string(read_from_file(input_file));
+        telegrams = parse_content_string(read_from_file(input_file), force_long);
     }
     else
     {
-        telegrams.push_back(parse_input_line(literal.c_str()));
-        if (telegrams.front() == NULL)
+        telegrams = parse_input_line(literal.c_str(), force_long);
+        if (telegrams == NULL)
         {
-            eprintf(VERB_QUIET, ERROR_COLOR "ERROR: No input specified, quitting.\n" ANSI_COLOR_RESET);
+            eprintf(VERB_QUIET, ERROR_COLOR "ERROR: No input specified, quitting. Try --help for help.\n" ANSI_COLOR_RESET);
             exit(ERR_NO_INPUT);
         }
     }
-
-    // set the force_long parameter of the telegrams:
-    if (force_long)
-        for (telegram*& tel : telegrams)
-            tel->force_long = true;
-
+    /*
+        // set the force_long parameter of the telegrams:
+        if (force_long)
+            for (telegram*& tel : telegrams)
+                tel->force_long = true;
+    */
     // set the #processes to 1 if the verbosity level is higher than VERB_PROG
     if (verbose > VERB_PROG)
         max_cpu = 1;
@@ -105,7 +111,7 @@ int main(int argc, char** argv)
     start = clock();
 
     // convert the input to the other format or check the correctness of a telegram:
-    result = convert_telegrams_multithreaded(telegrams, max_cpu);
+    result = convert_telegrams_multithreaded(telegrams, max_cpu, calc_all);
 
     end = clock();
     execution_time = ((double)(end - start)) / CLOCKS_PER_SEC;
@@ -120,10 +126,10 @@ int main(int argc, char** argv)
     else
         eprintf(VERB_QUIET, "%s", output_text.c_str());
 
-//    eprintf(VERB_QUIET, "Ready. Press any key to continue ...");
-//    char dummy = getch();
+    //    eprintf(VERB_QUIET, "Ready. Press any key to continue ...");
+    //    char dummy = getch();
 
     restoreConsole();
 
-    return get_first_error_code (telegrams);
+    return get_first_error_code(telegrams);
 }
