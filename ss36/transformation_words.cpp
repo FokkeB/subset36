@@ -14,8 +14,8 @@
 
 int find11(int val11)
 // returns the index of val11 in the transformation words (returning its index, which is a val10).
-// returns -1 if it does not exist.
+// returns NO_TW (-1) if it does not exist.
 // uses a lookup table that was generated from the transformation words, to save some clock ticks.
 {
-    return lookup_table[val11];
+    return transformation_words_inverted[val11];
 }

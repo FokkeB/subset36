@@ -23,7 +23,7 @@ telegram::telegram(const string inputstr, enum t_size newsize)
     errcode = ERR_NO_ERR;
     alignment = a_undef;
 
-    if (inputstr.length() > 0) 
+    if (inputstr.length() > 0)    /// tbd: is this needed? Why?
         parse_input(inputstr);
     else
         set_size(newsize);
@@ -76,10 +76,10 @@ void telegram::make_userdata_long()
     deshaped_contents.print_fancy(VERB_ALL, 16, number_of_userbits, NULL);
 }
 
-int telegram::parse_input(const string inputstr)
+void telegram::parse_input(const string inputstr)
 // parses the input line into the telegram. This is either a hex or base64 encoded string of the correct length (see below)
 // input has to be clean (i.e. no \r\t\n or spaces) and zero-terminated.
-// returns ERR_NO_ERR if all OK, error code otherwise.
+// sets the errorcode of the telegram to ERR_INPUT_ERROR if a parsing error occurred.
 // for each variant:
 //  - parse the char string into a byte string (so from base64/hex -> binary)
 //  - convert the byte string to a longnum 
@@ -140,14 +140,12 @@ int telegram::parse_input(const string inputstr)
         break;
 
     default:
-        eprintf(VERB_GLOB, ERROR_COLOR "\nError parsing string" ANSI_COLOR_RESET " \"%s\" of %zd chars, skipping to the next.\n", inputstr.c_str(), inputstr.length());
-        return ERR_INPUT_ERROR; // format not recognised, return error
+        eprintf(VERB_GLOB, ERROR_COLOR "\nError parsing string" ANSI_COLOR_RESET " \"%s\" of %zd chars.\n", inputstr.c_str(), inputstr.length());
+        errcode = ERR_INPUT_ERROR;
     }
 
     // set the alignment of the telegram to encoding:
     alignment = a_enc;
-
-    return ERR_NO_ERR;
 }
 
 
@@ -177,10 +175,16 @@ void telegram::set_extra_shaping_bits (t_esb esb)
     contents.write_at_location (N_CHECKBITS, &esb, N_ESB);
 }
 
-t_esb telegram::get_extra_shaping_bits (void)
-// returns the 10 "extra shaping bits" from the telegram 
+t_esb telegram::get_extra_shaping_bits (const longnum readfrom)
+// returns the 10 "extra shaping bits" from the passed longnum
 {
     return (t_esb)contents.get_word (N_CHECKBITS) & 0x3FF;
+}
+
+t_esb telegram::get_extra_shaping_bits(void)
+// returns the 10 "extra shaping bits" from the telegram 
+{
+    return get_extra_shaping_bits(contents);
 }
 
 void telegram::set_scrambling_bits (t_sb sb)
@@ -205,6 +209,12 @@ t_cb telegram::get_control_bits (void)
 // returns 3 the control bits from the telegram 
 {
     return (t_cb)contents.get_word (N_CHECKBITS+N_ESB+N_SB) & 0x7;
+}
+
+void telegram::set_cb_sb_esb(t_word cb_sb_esb)
+// set the control bits, scrambling bits and extra shaping bits all at once
+{
+    contents.write_at_location(N_CHECKBITS, &cb_sb_esb, N_ESB + N_SB + N_CB);
 }
 
 /*
@@ -235,6 +245,7 @@ void telegram::get_shaped_data (longnum& sd)
         sd[i-1] &= 0x0000007F;
 }
 */
+
 void telegram::print_contents_fancy(int v)
 // prints out the telegram in a fancy way (marking each part with a different color)
 // uses verbosity level v
@@ -242,7 +253,7 @@ void telegram::print_contents_fancy(int v)
     return_if_silent(v);
 
     eprintf(v, "Legend: " BITNUM_COLOR " (xxx)=bit number [0..N]; " ANSI_COLOR_RESET "%d bits shaped data; " ANSI_COLOR_MAGENTA "3 control bits; ", number_of_shapeddata_bits);
-    eprintf(v, ANSI_COLOR_BLUE "12 scrambling bits; " ANSI_COLOR_YELLOW "10 extra scrambling bits; " ANSI_COLOR_GREEN "85 check bits.\n" ANSI_COLOR_RESET);
+    eprintf(v, ANSI_COLOR_BLUE "12 scrambling bits; " ANSI_COLOR_YELLOW "10 extra shaping bits; " ANSI_COLOR_GREEN "85 check bits.\n" ANSI_COLOR_RESET);
     contents.print_fancy(v, 11, size, telegram_coloring_scheme);
 }
 
@@ -265,7 +276,7 @@ void telegram::align(enum t_align new_alignment)
         // go from a_enc to a_calc by SHR'ing the bits so that bit#0 is in location#0
     {
         contents >>= (8 - size % 8);                // 1023 or 341 => 1 or 3
-        deshaped_contents >>= (8 - number_of_userbits % 8);     // 830 or 210 => 2 or 6
+        deshaped_contents >>= (8 - number_of_userbits % 8);  // 830 or 210 => 2 or 6
     }
 
     // store the new alignment:
@@ -275,6 +286,7 @@ void telegram::align(enum t_align new_alignment)
 void telegram::determine_U_tick (longnum& Utick, int m)
 // calculates U'(k-1) from U (=telegram contents) and writes it to U (see subset 36, paragraph 4.3.2.2, step 1)
 // m=telegram size
+// tbd: is m needed? 
 {
     t_word sum=0;
 
@@ -289,12 +301,22 @@ void telegram::determine_U_tick (longnum& Utick, int m)
 t_S telegram::determine_S (t_sb sb)
 // determine S and return it (see subset 36, paragraph 4.3.2.2, step 2)
 // as t_S is a 32-bit int, no modulo 2^32 is needed
+// uses sb in the calculation
 {
     return (t_S)(sb*2801775573UL);
 }
 
+t_S telegram::determine_S(void)
+// determine S and return it (see subset 36, paragraph 4.3.2.2, step 2)
+// as t_S is a 32-bit int, no modulo 2^32 is needed
+// uses the currently set scrambling bits for the calculation
+{
+    return determine_S (get_scrambling_bits());
+}
+
 void telegram::scramble_user_data(t_S S, t_H H, const longnum& user_data_orig, longnum& user_data_scrambled, int m)
-// scrambles the data in user data (see subset 36, paragraph 4.3.2.2, step 3)
+// scrambles the data in user_data_orig into user_data_scrambled (see subset 36, paragraph 4.3.2.2, step 3)
+// tbd optimisation: use a lookup table?
 {
     int i;
     int user_bit, t, sb;
@@ -329,9 +351,202 @@ void telegram::transform10to11 (const longnum& userdata)
         contents.write_at_location(i*11 + OFFSET_SHAPED_DATA, &tw, 11);
     }    
 }
+/*
+int telegram::get_n_cvw(int start, int n, int n_cvw_max) const
+// determines the maximum number of consecutive valid words starting at start, using wraparound
+// looks at max n words from start (if 0, checks all scrambled user bits)
+// returns with ERR_OFF_SYNCH_PARSING if more than the max nr of cvw were found or ERR_NO_ERR if not
+{
+    int max_count, i, n_cvw=0;
+    t_word temp;
+
+    max_count = (n == 0) ? number_of_shapeddata_bits : (n-1)*11;
+
+    for (i = start; i <= start + max_count; i+=11)
+    {
+        temp = contents.get_word_wraparound(size, i) & 0x7FF;
+        eprintf(VERB_GLOB, "i=%d -> ", i); print_bin(VERB_GLOB, temp, 11);
+
+        if (find11(temp) != -1)  // tbd: const
+            n_cvw++;
+        else
+            n_cvw = 0;
+
+        eprintf(VERB_GLOB, "; n_cvw=%d\n", n_cvw);
+
+        if (n_cvw > n_cvw_max)
+        {
+            eprintf(VERB_GLOB, "ERR_OFF_SYNCH_PARSING occurred\n");
+            return ERR_OFF_SYNCH_PARSING;
+        }
+    }
+
+    return ERR_NO_ERR;
+}
+*/
+/*
+int telegram::check_ospc(unsigned int i, unsigned int n_offsets, )
+// checks the "off-sync parsing condition". 
+// n_cvw: only check the first n_cvw offsets
+// i: start at bit i
+{
+    unsigned int i_offset = 0;
+    int cvw_offsets[] = { 1, 10, 9, 2 , 8, 3, 7, 4, 6, 5 };  
+    int i_last_nvw[] = { number_of_userbits / 10 - 1, number_of_userbits / 10 - 1 };   // start one word before number of userbits
+    int i_vw, max_cvw; // , n_cvw = sizeof(cvw_offsets) / sizeof(cvw_offsets[0]);
+    t_word lookatword;
+
+    if (n_offsets > 10)
+        n_offsets = 10;
+
+    for (i_offset = 0; i_offset < n_offsets; i_offset++)
+    // check the OSPC for each useful offset using a greedy algorithm
+    {
+        // determine the max allowed cvw for this case:
+        if (i_offset <= 1) // offsets 1, 10
+                max_cvw = 2;
+        else  // cases 2..9:
+            if (size == s_long)
+                max_cvw = 10;
+            else
+                max_cvw = 6;
+
+        if ((i == i_last_nvw[i_offset] - (max_cvw + 1)) && (i_last_nvw[i_offset] >= (max_cvw + 1)))
+        // Max nr of words away from last non-valid word and not yet at the end; see if there are any other non-valid words amongst them
+        // store the position of the last non-valid word in the i_last_nvw-array
+        {
+            for (i_vw = i; i_vw < i_last_nvw[i_offset]; i_vw++)
+            {
+                lookatword = contents.get_word_wraparound(size, i_vw * 11 + OFFSET_SHAPED_DATA + cvw_offsets[i_offset]) & 0x7FF;
+
+                eprintf(VERB_ALL, "bit=%d -> ", i_vw * 11 + OFFSET_SHAPED_DATA + cvw_offsets[i_offset]);
+                print_bin(VERB_ALL, lookatword, 11);
+                if (verbose >= VERB_ALL)
+                    printf(" = octal %o\n", lookatword);
+
+                if (find11(lookatword) == NO_TW)
+                // current word is no transformation word, point i_last_nvw to this word
+                {
+                    i_last_nvw[i_offset] = i_vw;
+                    break;
+                }
+            }
+
+            if (i == i_last_nvw[i_offset] - (max_cvw + 1))
+            // more than max nr of cvw's found
+            {
+                eprintf(VERB_ALL, "OSPC fail\n");
+                for (offset_index = 0; offset_index < n_offsets; i_offset++)
+                    eprintf(VERB_ALL, "Offset: %d\n", cvw_offsets[i_offset]);
+
+                return ERR_OFF_SYNCH_PARSING;
+            }
+        }
+    }
+
+    return ERR_NO_ERR;
+}
+*/
+
+int telegram::scramble_transform_check_user_data(t_S S, t_H H, const longnum& user_data_orig, longnum& user_data_scrambled)   
+// scrambles the data in user_data_orig into user_data_scrambled (see subset 36, paragraph 4.3.2.2, step 3)
+// TBD optimisation: create a persistent (8 bits or 10 bits) lookup table for the current S. This will give an optimisation as this function may be called many times for a certain telegram.
+// If 10 bits, this can be combined with the 11-bit lookup and candidate checks.
+// see paragraph 3.1 in article of ZHUO Peng
+// checks the ERR_OFF_SYNCH_PARSING during scrambling and returns the error as soon as such an error occurred
+// Note: according to ZHUO Peng, checking the "Aperiodicity Condition for Long Format" is a very small optimisation (1%, see description @ step 4) and is therefore skipped
+{
+    int i, j;
+    int user_bit, t, sb, m_index = number_of_userbits;
+    t_word val10, val11, lookatword;
+    
+    // vars needed for greedy algorithm:
+    int offset_index = 0;
+    int cvw_offsets[] = { 1, 10, 9, 2 , 8, 3, 7, 4, 6, 5 };  
+    int i_start = number_of_userbits / 10 - 1;   // start one word before the number_of_userbits
+    int i_last_nvw[] = { i_start, i_start, i_start, i_start, i_start, i_start, i_start, i_start, i_start, i_start };
+    int i_vw, max_cvw = 2, n_cvw = sizeof(cvw_offsets) / sizeof(cvw_offsets[0]);
+    
+    for (i = i_start; i >= 0; i--)
+    // outer loop running over the 10-bit words, starting with the last word
+    {
+        val10 = 0;
+        for (j = 9; j >= 0; j--)
+        // inner loop, iterating over the bits in the current 10-bit word
+        {
+            m_index--;  // keep track of the current bit 
+            user_bit = user_data_orig.get_bit(m_index);
+            t = (char)(S >> 31);
+            sb = t ^ user_bit;
+            val10 += sb << j;
+
+            S <<= 1;
+            if (sb)
+                S ^= H;
+        }
+
+        // 10 bits calculated, find the corresponding transformation word and write it to the correct position:
+        val11 = (t_word)transformation_words[val10];
+        contents.write_at_location(i * 11 + OFFSET_SHAPED_DATA, &val11, 11);
+        // print the current status:
+        eprintf(VERB_ALL, "#userbits=%d, i=%d, m_index=%d\n", number_of_userbits, i, m_index);
+        print_contents_fancy(VERB_ALL);
+
+        for (offset_index = 0; offset_index < n_cvw; offset_index++)
+        // Iterate over the offsets; check the OSPC for each offset using a greedy algorithm
+        {        
+            // determine the max allowed cvw for this case:
+            // not needed if only the first two offsets are checked
+            if (offset_index <= 1) // offsets -1, 1
+                    max_cvw = 2;
+            else  // cases 2..9:
+                if (size == s_long)
+                    max_cvw = 10;
+                else
+                    max_cvw = 6;
+        
+            if ((i == i_last_nvw[offset_index] - (max_cvw + 1)) && (i_last_nvw[offset_index] >= (max_cvw + 1)))
+            // Max nr of words away from last non-valid word and not yet at the end; see if there are any other non-valid words amongst them
+            // store the position of the last non-valid word in the i_last_nvw-array
+            {
+                for (i_vw = i; i_vw < i_last_nvw[offset_index]; i_vw++)
+                {
+                    lookatword = contents.get_word_wraparound(size, i_vw * 11 + OFFSET_SHAPED_DATA + cvw_offsets[offset_index]) & 0x7FF;
+
+                    if (verbose >= VERB_ALL)
+                    {
+                        printf("offset=%d; bit=%d; ", cvw_offsets[offset_index], i_vw * 11 + OFFSET_SHAPED_DATA + cvw_offsets[offset_index]);
+                        print_bin(VERB_ALL, lookatword, 11);
+                        printf(" = octal %o", lookatword);
+                    }
+
+                    if (find11(lookatword) == NO_TW)
+                    // current word is no transformation word, point i_last_nvw to this word
+                    {
+                        i_last_nvw[offset_index] = i_vw;
+                        eprintf(VERB_ALL, "; Transformation word: no\n");
+                        break;
+                    }
+                    else
+                        eprintf(VERB_ALL, "; Transformation word: yes\n");
+                }
+
+                if (i == i_last_nvw[offset_index] - (max_cvw + 1))
+                // more than max nr of cvw's found
+                {
+                    eprintf(VERB_ALL, "OSPC check failed\n");
+                    return ERR_OFF_SYNCH_PARSING;
+                }
+            }
+        } 
+    }
+    
+    eprintf(VERB_ALL, "OSPC check passed!\n");
+    return ERR_NO_ERR;
+}
 
 int telegram::transform11to10 (longnum& userdata) 
-// performs the transformation from 11 bits back to 10 bits; returns ERR_11_10_BIT if an error occurred (11-bit value not found in list) or 0 if no errors occurred
+// performs the transformation from 11 bits back to 10 bits; returns ERR_11_10_BIT if an error occurred (11-bit value not found in list) or ERR_NO_ERR if no errors occurred
 // reads transformed data from telegram contents (from OFFSET_SHAPED_DATA), writes the original user data to userdata starting at bit 0
 // see subset 36, paragraph 4.3.2.3
 {
@@ -341,10 +556,10 @@ int telegram::transform11to10 (longnum& userdata)
     for (i=(number_of_userbits/10)-1; i>=0; i--)
     // iterate over the array of 11-bit values, get the original 10-bit value and store it in userdata
     {
-        bit11 = contents.get_word(OFFSET_SHAPED_DATA+i*11)&0x07FF;  // get the next 11 bits from the telegram contents
+        bit11 = contents.get_word(OFFSET_SHAPED_DATA + i*11) & 0x07FF;  // get the next 11 bits from the telegram contents
         bit10 = find11 (bit11);
 
-        if (bit10 == -1)
+        if (bit10 == NO_TW)
         {
             // this should never occur with a correctly encoded telegram:
             eprintf(VERB_ALL, "ERR: 11-bit value not found at i=%d; val=%o", i, bit11);
@@ -398,9 +613,9 @@ void telegram::calc_first_word (longnum& U, unsigned int m)
     temp = U.get_word(m-10) - sum;
     U.write_at_location(m-10, &temp, 10);
 }
-
+/*
 void telegram::compute_check_bits (void)
-// compute the check bits as described in SS36, 4.3.2.4
+// compute the check bits as described in SS36, 4.3.2.4, using a different implementation than used during the creation of the telegram
 // input: a filled telegram (check bits already present will be overwritten)
 // output: the checkbits in bit 0..84 of the telegram
 // performs a sanity check on the calculations
@@ -408,8 +623,9 @@ void telegram::compute_check_bits (void)
 // does not return an error code as this should always work (if it doesn't: DIE)
 {
     longnum g, fg, quotient, remainder, sanitycheck, checkbits; // default initialised with 0's
+    longnum temp;
 
-    // clear the lower 85 bits [0..84] from the input telegram, needed for the calculation:
+    // clear the lower 85 check bits [0..84] from the input telegram, needed for the calculation:
     contents[0] = 0;            // bit [0..31]
     contents[1] = 0;            // bit [32..63]
     contents[2] &= 0xFFE00000;  // bit [64..84]
@@ -448,7 +664,7 @@ void telegram::compute_check_bits (void)
     // calculate f*g:
 //    GF2_multiply (f, g, fg);   // fg is pre-defined above instead of calculating it, to save some clock ticks and memory 
 
-    // divide the telegram by f*g, yielding quotient and remainder:
+// divide the telegram by f*g, yielding quotient and remainder:
     contents.GF2_division (fg, quotient, remainder);
 
     // add (=xor) g to the remainder -> checkbits!:
@@ -493,8 +709,98 @@ void telegram::compute_check_bits (void)
     contents[1] = checkbits[1];    // bits 32..63
     contents[2] |= checkbits[2];   // set bits 64..84
 }
+*/
 
-t_sb telegram::set_next_sb_esb(void)
+void telegram::compute_check_bits_opt(void)
+// compute the check bits as described in Subset 36, 4.3.2.4. Optimisation: do not recalculate the first part of the telegram if the scramble bits haven't changed.
+// input: a filled telegram (check bits already present will be overwritten)
+// output: the checkbits in bit 0..84 of the telegram
+// note that (as both f and g are constants), g and f*g are used, rather than calculating f*g at each run from f and g
+// does not return an error code as this always works
+// tbd optimisation?: use lookup table and check the alphabet condition while looking up
+{
+    longnum remainder, checkbits; 
+    int shift, i;
+    longnum g, fg;
+
+    // clear the lower 85 bits [0..84] from the input telegram, needed for the calculation:
+    contents[0] = 0;            // bit [0..31]
+    contents[1] = 0;            // bit [32..63]
+    contents[2] &= 0xFFE00000;  // bit [64..84]
+
+    eprintf(VERB_ALL, HEADER_COLOR "\nCalculating check bits:\n" ANSI_COLOR_RESET);
+    eprintf(VERB_ALL, FIELD_COLOR "Input telegram:\t" ANSI_COLOR_RESET); print_contents_fancy(VERB_ALL);
+
+    // determine the inputs to the calculation (kept here instead of moving them to ss36.h):
+    if (size == s_long)
+    {
+        // polynomials for a long telegram:
+//        f[0] = 0b11011011111;  // not used, using fg instead
+
+        g[0] = 0b11010101001000111011101000010011;
+        g[1] = 0b01110011100110100111101000101110;
+        g[2] = 0b101110001000;
+
+        // calculated f*g: 0x003EC171 890C6F72 C063B091
+        fg[0] = 0xC063B091;
+        fg[1] = 0x890C6F72;
+        fg[2] = 0x003EC171;
+    }
+    else
+    {
+        // polynomials for a short telegram:
+//        f[0] = 0b10110101011;  // not used, using fg instead
+
+        g[0] = 0b11001010010010100011110001001011;
+        g[1] = 0b10010000110000101111111011110111;
+        g[2] = 0b100111110111;
+
+        // calculated f*g: 0x002BB94D 87757959 021B6D65, with order 86
+        fg[0] = 0x021B6D65;
+        fg[1] = 0x87757959;
+        fg[2] = 0x002BB94D;
+    }
+
+    // See if the previously calculated intermediate can be used
+    if (get_scrambling_bits() == intermediate_sb)  
+    // already calculated the remainder up to the ESB. Copy the intermediate result, set the right ESB's and continue the calculation
+    {
+        remainder = intermediate;
+        remainder.write_at_location(N_CHECKBITS, get_extra_shaping_bits(), N_ESB);
+        eprintf(VERB_ALL, "Reused intermediate calculation for ESB=%d.\n", intermediate_sb); //intermediate.print_bin(VERB_GLOB);
+    }
+    else
+    // No previous calculation for the current SB; copy telegram contents into remainder
+        remainder = contents;
+
+    // Perform the calculation (GF2 division, from which only the remainder is relevant)
+    for (i = remainder.get_order(); i >= FG_ORDER; i--)
+    {
+        shift = i - FG_ORDER;
+        if (remainder.get_bit(i - 1))
+            remainder ^= fg << shift;
+
+        if (i == N_CHECKBITS + N_ESB + FG_ORDER)
+        // calculated everything up to the Extra Shaping Bits, store the intermediate result
+        {
+            intermediate = remainder;
+            intermediate_sb = get_scrambling_bits();
+            eprintf(VERB_ALL, "Stored intermediate calculation for ESB=%d: \n",intermediate_sb); intermediate.print_bin(VERB_ALL);
+        }
+
+        //eprintf(VERB_ALL, "\ni=%d; shift=%d; \nremainder=", i, shift); remainder.print_bin(VERB_GLOB); 
+    }
+
+    // add (=xor) g to the remainder -> checkbits!:
+    checkbits = remainder + g;
+
+    // save the checkbits
+    contents[0] = checkbits[0];    // bits 0..31
+    contents[1] = checkbits[1];    // bits 32..63
+    contents[2] |= checkbits[2];   // set bits 64..84
+}
+
+//t_sb telegram::set_next_sb_esb(void)
 /** Sets the next scrambling bits and extra scrambling bits. See SubSet 36, 4.3.1.2 Telegram Format:
 * Because of the Alphabet condition, these two words need to come from the "transformation words".
 * word #10 (starting at bit#99) exists of two parts: [b10..b8] are the control bits (always 001) and [b7..b0] are the first 8 scrambling bits.
@@ -511,6 +817,7 @@ t_sb telegram::set_next_sb_esb(void)
 * if run for the first time for a certain telegram, set telegram->word9 to -1 and telegram->word10 to 0.
 * returns the new scrambling bits
 */
+/*
 {
     #define FIRST_TW_001    104 // index of first transformation word starting with 001
     #define LAST_TW_001     260 // index of last transformation word starting with 001
@@ -558,14 +865,167 @@ t_sb telegram::set_next_sb_esb(void)
 
     return (cb_sb_esb >> 10) & 0xFFF;  // return the new scrambling bits: bits [21..10] of word8 
 }
+*/
 
+t_sb telegram::set_next_sb_esb_opt(void)
+/* sets the next scrambling bits (and resets the extra shaping bits) by selecting the next transformation word(s)
+* if run for the first time for a certain telegram, set telegram->word9 to -1 and telegram->word10 to 0.
+* word9 contains the last 4 scrambling bits and the first 7 extra shaping bits
+* word10 contains the 3 control bits and the first 8 scrambling bits
+* both word9 and word10 need to be transformation words
+*/
+{
+    t_word cb_sb_esb = 0; 
+    signed int old9;
+
+    if (word10 == 0)  // tbd: check initialisation. Still needed?
+    // run for the first time, initialise word10 to point at the first word starting with 001 (=control bits)
+    {
+        word10 = FIRST_TW_001;
+        word9 = 0; // ++;
+    }
+    else
+    {
+        word10++;
+    }
+
+    if (word10 > LAST_TW_001)
+    // word10 overflowed, find the next word9 in which the first four bits are different than the current word9 and reset word10 and the ESB's
+    {
+        word10 = FIRST_TW_001;
+        old9 = transformation_words[word9] & 0b11110000000; // isolate the current first four bits of word9 (=last four scrambling bits)
+        //contents.write_at_location(N_CHECKBITS, (t_word)0, 3);  // clear the lower three bits of the ESB
+
+        // find the next word9 with updated first four bits. Note that this also resets the high 7 bits ESB to the first possible value
+        while (old9 == (transformation_words[++word9] & 0b11110000000))  
+        {
+            // check if the ESB's overflowed:  TBD: move to set_next_esb_opt
+            if (word9 == N_TRANS_WORDS-1)
+            {
+                // this should only veeeeery rarely happen: 10^-100 (see subset 36, A1.1.1)
+                eprintf(VERB_QUIET, ERROR_COLOR "\n\nERROR:" ANSI_COLOR_RESET " No valid combination of Scrambling Bits and Extra Shaping Bits found for the telegram below. \n");
+                eprintf(VERB_QUIET, "Please make a minor change in the telegram contents and try again. See Subset-036.\n");
+                eprintf(VERB_QUIET, "Also: please send a copy of the input telegram to the writer of this program (fokke@bronsema.net). Thanks :-)\n");
+                eprintf(VERB_QUIET, "Contents of input telegram: \n");// , telegram->input_string);
+                align(a_enc);  // shift the bits to the left to prepare for printing
+                deshaped_contents.print_hex(VERB_QUIET, number_of_userbits);
+                eprintf(VERB_QUIET, "\n\n");
+
+                exit(ERR_SB_ESB_OVERFLOW);
+            }
+        }
+    }
+    else
+    // Only word10 was updated. Clear the ESB's by pointing word9 to the first transformation word that starts with the last four SB's:
+    {
+        old9 = transformation_words[word9] & 0b11110000000; // isolate the current first four bits of word9 (=last four scrambling bits)
+        word9 = -1;
+        while (old9 != (transformation_words[++word9] & 0b11110000000));
+    }
+
+    cb_sb_esb += (transformation_words[word9] << 3);         // fill bits [4..15] with tf<<3, clear the lower three bits
+    cb_sb_esb += (transformation_words[word10] << 14);       // set word#10
+    set_cb_sb_esb(cb_sb_esb); // write the cb+esb+sb to the telegram, reset the three lower ESB-bits
+
+    eprintf(VERB_ALL, "Updated CB, SB and ESB to:\n"); print_contents_fancy(VERB_ALL);
+    eprintf(VERB_ALL, "word10=%d; tw10=o%o; word9=%d; tw9=o%o; \n", word10, transformation_words[word10], word9, transformation_words[word9]);
+
+    return (cb_sb_esb >> 10) & 0xFFF;  // return the new scrambling bits: bits [21..10] of word8 
+}
+
+bool telegram::set_next_esb_opt(void)
+// sets the next esb for which word9 begins with the four LSB's of the current sb.
+// returns true if a next ESB was found. 
+// if no more esb's are available, returns false.
+{
+    t_word esb = contents.get_word(N_CHECKBITS) & 7;  // isolate the current three high bits in word#8 (= 3 lower bits of ESB)
+
+    if (esb < 7)
+    // only increase the lower three bits if this is possible
+        esb++;
+    else
+    {
+        esb = 0;
+        if ((transformation_words[word9] & 0b11110000000) == (transformation_words[word9 + 1] & 0b11110000000))
+        // find the next t.w. that starts with the same four bits. No need to check for overflow of word9
+            word9++;
+        else
+        // no new transformation word available (new scrambling bits are needed), return false
+        {
+            //word9 = 0;
+            return false;
+        }
+    }
+
+    esb += (transformation_words[word9] << 3);         // fill bits [4..15] with tf<<3, keep the lower three bits
+    set_extra_shaping_bits(esb);
+
+    eprintf(VERB_ALL, "Updated CB, SB and ESB to:\n"); print_contents_fancy(VERB_ALL);
+    eprintf(VERB_ALL, "word10=%d; tw10=o%o; word9=%d; tw9=o%o; \n", word10, transformation_words[word10], word9, transformation_words[word9]);
+
+    return true;
+}
+
+void telegram::shape_opt(void)
+// encodes the userdata (deshaped_contents) in the telegram (filling contents).
+// recalculate with different settings (sb/esb) if the checks fail and repeat until the checks don't fail.
+// checks the "off-synch-parsing-condition" (and not the "aperiodicity condition for long format") while shaping the user data in order to find out illegal telegrams ASAP
+{
+    longnum UD_scrambled, Utick, temp;
+    int err_location = 0, errs_found = 0, err; // , result;
+    t_word current_sb = 0, new_sb = 0, esb_mask = 7;
+
+    align(a_calc);
+
+    Utick = deshaped_contents;
+    determine_U_tick(Utick, number_of_userbits);
+    eprintf(VERB_ALL, "\nU'=\n"); Utick.print_bin(VERB_ALL);
+    word9 = -1;  // will be set to 0 in the first run of set_next_sb_esb
+    word10 = 0;
+
+    do
+    // repeat until we find a correct telegram
+    {
+        do
+        // calculate the next scrambling bits and create shaped user bits that pass a large part of the Off-Synch-Parsing Condition
+        {
+            set_next_sb_esb_opt();
+        } while (scramble_transform_check_user_data(determine_S(), H, Utick, UD_scrambled) != ERR_NO_ERR);
+
+        do
+        // compute the check bits (CRC), perform checks and update the extra shaping bits until a correct solution is found.
+        // if none can be found, start from the top with new scrambling bits
+        {
+            compute_check_bits_opt();
+            
+            eprintf(VERB_ALL, "\nChecking new telegram:\n");
+            print_contents_fancy(VERB_ALL);
+
+            // now see if the packet is "well formed", make another run if not.
+            err = perform_candidate_checks(VERB_ALL, &err_location);
+
+            if ((err == ERR_OFF_SYNCH_PARSING) || (err == ERR_APERIODICITY))
+                if (err_location >= OFFSET_SHAPED_DATA)
+                // error sequence is located completely in the shaped user data, it is therefore pointless to update the ESB
+                // solution: set last three bits of ESB to 111, so the next word 9 and if necessary word10 are selected in the next run
+                // tbd: checks in combination with wraparound: does this work correctly? Or check err_location<size-341 (oid)
+                {
+                    contents.write_at_location(N_CHECKBITS, &esb_mask, 3);  // set the lower three bits of the ESB to 111 
+                }
+        } while (err && set_next_esb_opt());
+    } while (err);
+
+    //eprintf(VERB_GLOB, "Shaped the telegram in %d iterations.\n", n_iter);
+
+}
+/*
 void telegram::shape(void)
 // encodes the userdata (deshaped_contents) in the telegram (filling contents).
 // recalculate with different settings (sb/esb) if the checks fail and repeat until the checks don't fail.
 {
     longnum UD_scrambled, Utick;
     int err_location = 0, errs_found = 0, err, n_iter = 0;
-    t_word current_sb = 0, new_sb = 0, esb_mask = 7;
+    t_word current_sb = 0, new_sb = 0;
 
     align(a_calc);
 
@@ -580,7 +1040,7 @@ void telegram::shape(void)
     {
         // find the next combination of sb/esb:
         new_sb = set_next_sb_esb();   // also sets the three control bits to 001
-
+        
         n_iter++;
  
         if (new_sb != current_sb)
@@ -612,13 +1072,14 @@ void telegram::shape(void)
             // error sequence is located completely in the shaped user data, it is therefore pointless to update the ESB
             // solution: set ESB to 111, so the next word 9 and if necessary word10 are selected in the next run
             {
-                contents.write_at_location(N_CHECKBITS, &esb_mask, 3);  // set the lower three bits of the ESB to 111 
+                contents.write_at_location(N_CHECKBITS, 0b111, 3);  // set the lower three bits of the ESB to 111 
             }
 
     } while (err);
 
     eprintf(VERB_GLOB, "Shaped the telegram in %d iterations.\n", n_iter);
 }
+*/
 
 void telegram::deshape(longnum& userdata)
 // deshapes the shaped data in the telegram into userdata (which could be part of telegram)
@@ -631,7 +1092,7 @@ void telegram::deshape(longnum& userdata)
     transform11to10(userdata);
     eprintf(VERB_ALL, "\n11 to 10 =\n"); userdata.print_bin(VERB_ALL);
 
-    S = determine_S(get_scrambling_bits());
+    S = determine_S();
 
     descramble(S, H, userdata, number_of_userbits);
     eprintf(VERB_ALL, "Descrambled:\n"); userdata.print_bin(VERB_ALL);
@@ -651,8 +1112,10 @@ int telegram::perform_candidate_checks(int v, int* err_location)
 // performs all the checks in subset 36, paragraph 4.3.2.5 "Testing Candidate Telegrams".
 // returns one of the subset 36 error codes, or 0 if all OK, stops checking after occurence of the first error.
 // sets err_location to point to the start bit of the error (if this makes sense).
+// perform the checks in the optimal order, see elimination rates in ZHUO Pengs article, Step 7.
 {
     *err_location = check_alphabet_condition();
+    // tbd opt: only need to check the checkbits++
     if (*err_location != MAGIC_WORD)
     {
         eprintf(v, ERROR_COLOR "check_alphabet_condition fails" ANSI_COLOR_RESET " at word starting with bit#%d.\n", *err_location);
@@ -662,6 +1125,7 @@ int telegram::perform_candidate_checks(int v, int* err_location)
         eprintf(v, "Check alphabet condition:\t\t\t" OK_COLOR "OK\n" ANSI_COLOR_RESET);
 
     *err_location = check_off_synch_parsing_condition();
+    // tbd opt: skip some of the shaped data
     if (*err_location != MAGIC_WORD)
     {
         eprintf(v, ERROR_COLOR "check_off_synch_parsing_condition fails" ANSI_COLOR_RESET " at bit# %d.\n", *err_location);
@@ -717,7 +1181,7 @@ int telegram::check_alphabet_condition()
 
 int telegram::check_off_synch_parsing_condition ()
 /** checks the off_synch_parsing_condition in the test data (see subset 36, 4.3.2.5.3) for the given telegram
- * returns the bit number of the start of the sequence of words that triggers a fail, or the MAGIC_WORD if all OK 
+ * returns the bit number of the start of the sequence of "consecutive valid words" (cvw) that triggers a fail, or the MAGIC_WORD if all OK 
  * 
  * The following situations can occur:
  *  0) i = 0, 11, 22, ... : multiple of 11 (-> no action, is already checked in the alphabet condition check)
@@ -729,83 +1193,107 @@ int telegram::check_off_synch_parsing_condition ()
  * 10) i = 10, 21, 32, .. : i+1 is multiple of 11, see case 1)
  * 11) i = 11, 22, 33, .. : see first line (no action)
  *
- * this is checked for every i in [0 .. #bits in telegram]. If i >= bits in telegram - 10, there will be a wraparoud to the beginning of the telegram
- * cvw = consecutive valid words
-*/
+ * this check is performed using a greedy algorithm, thanks @ZHUO Peng
+ */
 {
-    unsigned int i, offset, max_cvw, n_cvw, temp, err_local, err_overall = MAGIC_WORD, start_err = 0;
-    t_longnum_layout err_marking[2] = { 0 };
-    err_marking[1].length = 0;  // initialise the last marking to 0
+    unsigned int i, min_i, prev_i, max_i, i_offset, max_cvw;
+    bool firstrun = true;
 
-    for (offset = 1; offset <= 10; offset++)
-    // iterate over the cases
+    //int offsets[] = { -1, 1, -2, 2, -3, 3, -4, 4, -5, 5 };    // Use Order 2, see ZHUO Pengs article, 3.3: i+/-2, 3, 4, 5 instead of i+2,3,4,5,6,7,8,9
+    unsigned int offsets[] = { 10, 1, 9, 2, 8, 3, 7, 4, 6, 5 };
+
+//    unsigned int n_cvw, temp, err_local, err_overall = MAGIC_WORD, start_err;
+//    t_longnum_layout err_marking[2] = { 0 };
+//    err_marking[1].length = 0;  // initialise the last marking to 0
+//    unsigned int old_result = MAGIC_WORD;
+
+    for (i_offset = 0; i_offset < sizeof(offsets) / sizeof(offsets[0]); i_offset++)
+    // iterate over the offsets
     {
-        // determine the max cvw for this case:
-        if ( (offset == 1) || (offset == 10) )
+        // determine the max allowed cvw for this case:
+        if (i_offset <= 1) //( (i_offset == 0) || (i_offset == 1) )   // offsets -1, 1
             max_cvw = 2;
         else  // cases 2..9:
-            if (size == s_long) 
+            if (size == s_long)
                 max_cvw = 10;
             else
                 max_cvw = 6;
-                
-        eprintf(VERB_ALL, HEADER_COLOR "\noffset=%d\n" ANSI_COLOR_RESET, offset);
 
-        n_cvw = 0;
-        err_local = 0;
-        for (i=offset; i<(unsigned int)size; i+=11)
+        eprintf(VERB_ALL, HEADER_COLOR "\nOff-sync parsing condition check; offset=%d, max_cvw=%d\n" ANSI_COLOR_RESET, offsets[i_offset], max_cvw);
+        eprintf(VERB_ALL, "SB=%d; ESB=%d\n", get_scrambling_bits(), get_extra_shaping_bits());
+        print_contents_fancy(VERB_ALL);
+
+        // initial conditions for greedy algorithm, starting at the lower bits:
+        i = offsets[i_offset] + max_cvw * 11;   // i points to bit 0 of max_cvw+1
+        min_i = offsets[i_offset];              // start of greedy step
+        prev_i = i;                             // the max index of the previous step
+        max_i = i;                              // the max index of the current step
+        firstrun = true;                        // set to true if this is the first greedy step
+
+        while (i < (unsigned int)size + (max_cvw+2) * 11 + offsets[i_offset])
+        // determine the max_nvw using a greedy algorithm. use max_cvw+2 to get sufficient overlap with the first step at the wraparound
         {
-        // find out the max nr of consecutive valid 11-bit words for the current offset: 
-            temp = contents.get_word_wraparound(size, i) & 0x7FF;
-            if (find11(temp) != -1)
-            // word was found in the list
+            // print the current greedy state:
+            if (check_verbose(VERB_ALL))
             {
-                eprintf(VERB_ALL, ANSI_COLOR_YELLOW);
+                t_longnum_layout greedy_markings[] =
+                {
+                    {min_i, 11, ANSI_COLOR_GREEN},
+                    {i % size, 11, ANSI_COLOR_YELLOW},
+                    {0, 0, ""}
+                };
+                contents.print_fancy(VERB_ALL, 11, size, greedy_markings);
+            }
 
-                n_cvw++;
-                if (n_cvw > max_cvw)
-                    err_local = 1;
-            }    
+            if (find11(contents.get_word_wraparound(size, i) & 0x7FF) == NO_TW)
+            // a non-valid word was found, skip to the next
+            {
+                eprintf(VERB_ALL, "Non-valid word found @bit %d; prev_i=%d\n", i % size, prev_i);
+                min_i = i + 11;                 // set min_i to the word following the current non-valid word
+                i = min_i + max_cvw * 11;       // set i to the end of the possible valid word sequence
+                prev_i = max_i;                 // remember the starting point of the previous iteration
+                max_i = i;                      // remember the max i
+                firstrun = false;               // no longer in first run
+            }
             else
+            // a valid word was found, step back to see if the previous word was non-valid
             {
-                n_cvw = 0;          // reset the counter
-                start_err = i+11;   // store the start of the next sequence
+                eprintf(VERB_ALL, "Valid word found @bit %d; prev_i=%d\n", i % size, prev_i);
+
+                if (i == (firstrun ? min_i : (prev_i + 11)))
+                // max nr of cvw's was found, exit with an error
+                {
+                    eprintf(VERB_ALL, ERROR_COLOR "\nNOK: off-synch-parsing condition fails; max cvw exceeded at bit #%d.\n" ANSI_COLOR_RESET, min_i);
+                    eprintf(VERB_ALL, "offset=%d; max. nr. of consecutive valid words=%d.\n\n", offsets[i_offset], max_cvw);
+
+                    errcode = ERR_OFF_SYNCH_PARSING;
+                    return min_i;
+                }
+
+                i -= 11;
             }
+        }
 
-            eprintf(VERB_ALL, "  i=%04d; word=", i); print_bin (VERB_ALL, temp, 11); eprintf(VERB_ALL, ANSI_COLOR_RESET); 
-            if (i%4==0)
-                eprintf(VERB_ALL, "\n");
-
-            if (err_local) 
-            {   
-                eprintf(VERB_ALL, ERROR_COLOR "\nNOK: off-synch-parsing condition fails; max cvw exceeded at bit #%d.\n" ANSI_COLOR_RESET, i);
-                eprintf(VERB_ALL, "offset=%d; max. nr. of consecutive valid words=%d but found %d.\n\n", offset, max_cvw, n_cvw);
-
-                err_marking[0] = { start_err, n_cvw * 11, ANSI_COLOR_RED };
-                contents.print_fancy(VERB_ALL, 11, size, err_marking);
-
-                err_overall = start_err;
-                errcode = ERR_OFF_SYNCH_PARSING;
-                break; // return err_overall;
-            }
-        } 
-
-        if (!err_local) 
-            eprintf(VERB_ALL, OK_COLOR " (OK)\n" ANSI_COLOR_RESET);
+        eprintf(VERB_ALL, OK_COLOR "Off-synch-parsing condition OK for offset=%d.\n" ANSI_COLOR_RESET, offsets[i_offset]);
     }
 
-    return err_overall;
+    // no sequence of max_cvw found
+    return MAGIC_WORD;
 }
 
 int telegram::calc_hamming_distance(t_word word1, t_word word2)
 // calculates and returns the hamming distance between word1 and word2
 // see https://en.wikipedia.org/wiki/Hamming_distance
 {
-    int temp, hamming_distance = 0;
+    t_word temp; 
+//    int hamming_distance = 0;
 
     // light up the bits that differ by XOR-ing the two input words:
     temp = word1 ^ word2;
 
+    // return the number of 1-bits in temp using the "population count" instruction (available from C++20) (small performance gain above doing this ourselves)
+    return std::popcount(temp); // __popcnt(temp);
+/*
     // then count the amount of set bits:
     while (temp)
     {
@@ -814,6 +1302,7 @@ int telegram::calc_hamming_distance(t_word word1, t_word word2)
     }
 
     return hamming_distance;
+*/
 }
 
 int telegram::check_aperiodicity_condition ()
@@ -949,6 +1438,8 @@ int telegram::check_undersampling_condition()
  * 
  * Alternatively (and used below), for both telegram lengths N: check that the max amount of consecutive valid words is 30 for 0<=n<N+30 words (this includes wrap-around).
  * return 0 if all ok or ERR_UNDER_SAMPLING if an error was found.
+ * 
+ * tbd optimisation: implement greedily (very small performance gain)
  */
 {
     int factor, i, j;
@@ -1006,7 +1497,7 @@ int telegram::check_check_bits()
 
     //init_telegram(&temp, telegram->size);
     temp = *this;
-    temp.compute_check_bits();  // temp now has the calculated check bits
+    temp.compute_check_bits_opt();  // temp now has the calculated check bits
     temp.get_checkbits(cb1);
     get_checkbits(cb2);
 

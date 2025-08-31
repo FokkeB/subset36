@@ -36,3 +36,8 @@
 /x64/Release/tester.pdb
 /ss36.sln
 /.gitattributes
+/backup/ss36/ss36.vcxproj
+/inputdocs/FSFB2 Safety Protocol.pdf
+/balise_codec_no_opt.exe
+/lfsr_lookup
+/inputdocs/LFSR mathematics.docx

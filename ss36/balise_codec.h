@@ -15,7 +15,7 @@
 #define BALISE_CODEC_H
 
 #define MAX_ACTIVE_THREADS 100                  // max amount of threads to spawn. Array size of list of thread handles.
-#define PROG_VERSION "4 (February 2024)"        // version of this program
+#define PROG_VERSION "5 (August 2025)"          // version of this program
 #define CSV_SEPARATOR ";"						// separator to be used in output
 
 #include "telegram.h"               // subset 36 - related functions

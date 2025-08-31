@@ -27,10 +27,11 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string>
+#include <bit>    // for popcount instruction used in calculation of Hamming distance
+
 #include "colors.h"
 #include "longnum.h"
 #include "transformation_words.h"
-using namespace std;
 
 #define BITLENGTH_LONG_TELEGRAM     1023            // length of long telegram
 #define BITLENGTH_SHORT_TELEGRAM    341             // length of short telegram
@@ -70,12 +71,14 @@ static t_longnum_layout telegram_coloring_scheme[5] =
     {0, 0, ""}
 };
 
+#define FG_ORDER                86      // the order of fg (86 for both a long and a short telegram)
+
 #define ERR_NO_ERR              0       // all OK
 #define ERR_NO_INPUT            1       // no input specified
 #define ERR_LOGICAL_ERROR       2       // a logical error has occurred
 #define ERR_OUTPUT_FILE         3       // error creating output file
 #define ERR_MEM_ALLOC           4       // error allocating memory
-#define ERR_INPUT_ERROR         5
+#define ERR_INPUT_ERROR         5       // error in the input
 
 // error codes from the subset 36:
 #define ERR_ALPHABET            10
@@ -107,7 +110,7 @@ class telegram
 {
 public:
     string              input_string;               // original input line
-    longnum             contents;                   // shaped contents. 
+    longnum             contents;                   // shaped contents
     enum t_size         size;                       // BITLENGTH_LONG_TELEGRAM (1023) or BITLENGTH_SHORT_TELEGRAM (341)
     longnum             deshaped_contents;          // deshaped contents
     int                 errcode;                    // error code if anything is wrong with this telegram (see below)
@@ -116,26 +119,31 @@ public:
     unsigned int        number_of_shapeddata_bits;  // #bits in shaped data (N_SHAPEDDATA_L or N_SHAPEDDATA_S; =11/10*number_of_userbits)
     int                 word9, word10;              // indices of the two transformation words in which the control bits, scrambling bits and extra shaping bits are located (see function "shape")
     bool                force_long=false;           // if true: make a long telegram out of this (if this is not already the case). If false: don't mess with the sizes
+    longnum             intermediate;               // for intermediate calculation (BCH1). See step 6 in ZUO Peng's article (partial result of check bits calculation up unto the ESB)
+    t_sb                intermediate_sb=0;          // the scrambling bits with which the intermediate was calculated
 
     // function prototypes:
     // start with some initialisers, getters, setters and other useful functions:
     telegram(const string inputstr, enum t_size newsize);
     void set_size(enum t_size newsize);
     void make_userdata_long();
-    int parse_input(const string inputstr);
+    void parse_input(const string inputstr);
     void set_checkbits(const t_checkbits checkbits);
     void get_checkbits(longnum& checkbits);  
     void set_extra_shaping_bits(t_esb esb);
     t_esb get_extra_shaping_bits(void);
+    t_esb get_extra_shaping_bits(const longnum readfrom);
     void set_scrambling_bits(t_sb sb);
     t_sb get_scrambling_bits(void);
     void set_control_bits(t_word cb);
     t_cb get_control_bits();
+    void set_cb_sb_esb(t_word cb_sb_esb);
 //    void set_shaped_data(const longnum sd);   // unused and untested
 //    void get_shaped_data(longnum& sd);        // unused and untested
     void print_contents_fancy(int v);
     void align(enum t_align new_alignment);
-    void shape(void);
+    void shape_opt(void);
+//    void shape(void);
     void deshape(longnum& userdata);
     void deshape(void);
     int check_shaped_telegram(void);
@@ -145,18 +153,25 @@ private:
     // functions needed to (de)shape a telegram:
     void determine_U_tick(longnum& Utick, int m);
     t_S determine_S(t_sb sb);
+    t_S determine_S(void);
     void scramble_user_data(t_S S, t_H H, const longnum& user_data_orig, longnum& user_data_scrambled, int m);
     void transform10to11(const longnum& userdata);
+    int scramble_transform_check_user_data(t_S S, t_H H, const longnum& user_data_orig, longnum& user_data_scrambled);
     int transform11to10(longnum& userdata);
     void descramble(t_S S, t_H H, longnum& user_data, int m);  
     void calc_first_word(longnum& U, unsigned int m);
-    void compute_check_bits(void);
-    t_sb set_next_sb_esb(void);
+//    void compute_check_bits(void);
+    void compute_check_bits_opt(void);
+//    t_sb set_next_sb_esb(void);
+    t_sb set_next_sb_esb_opt(void);
+    bool set_next_esb_opt(void);
 
     // functions needed to perform the tests of candidate telegrams (see subset 36, 4.3.2.5):
     int perform_candidate_checks(int v, int* err_location);  
     int check_alphabet_condition(void);
+//    int get_n_cvw(int start, int n, int max) const;
     int check_off_synch_parsing_condition(void);
+//    int check_ospc(unsigned int i, unsigned int n_cvw = 10);
     int calc_hamming_distance(t_word word1, t_word word2);  // part of aperiodicity condition
     int check_aperiodicity_condition(void);
     int get_max_run_valid_words(const longnum& ln);  

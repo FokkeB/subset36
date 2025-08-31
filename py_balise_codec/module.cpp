@@ -46,7 +46,7 @@ The definition of the error codes (0=OK) is given in 'telegram.h', see the githu
 static PyModuleDef balise_codec_module = {
     PyModuleDef_HEAD_INIT,
     "balise_codec",                        
-    "'balise_codec.pyd': Python module for (de)coding ETCS Eurobalise contents, version 4, February 2024. See: https://github.com/FokkeB/subset36.",      
+    "'balise_codec.pyd': Python module for (de)coding ETCS Eurobalise contents, version 5, August 2025. See: https://github.com/FokkeB/subset36.",      
     0,
     balise_codec_methods                  
 };

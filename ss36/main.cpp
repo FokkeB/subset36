@@ -32,6 +32,7 @@ int main(int argc, char** argv)
     bool force_long = false;            // force long format for shaped telegrams
     bool show_err = false;              // show the meaning of the error codes
     bool error_only = false;            // only show output lines that contain an error
+    bool nooptimise = false;            // don't optimise the calculations
 
     setupConsole();  // for colorful output
 
@@ -49,26 +50,27 @@ int main(int argc, char** argv)
     CLI11_PARSE(app, argc, argv);
 
     if (show_err)
-        // show the meaning of the error messages and die
+    // show the meaning of the error messages and die
     {
         printf("The error codes below can be generated when checking / shaping a telegram. \n");
         printf("See SUBSET - 036 paragraph 4.3 for more details concerning error codes >= 10.\n");
         printf("Increase verbosity to 2 to see detailed information about the errors found during conversion.\n");
         printf("Error code\tExplanation\n");
-        printf("\t0\tNo error\n");
-        printf("\t1\tNo input specified\n");
-        printf("\t2\tA logical error (not further specified)\n");
-        printf("\t3\tError creating output file\n");
-        printf("\t4\tError during memory allocation\n");
-        printf("\t10\tAlphabet condition fails\n");
-        printf("\t11\tOff-sync parsing condition fails\n");
-        printf("\t12\tAperiodicity condition fails\n");
-        printf("\t13\tUndersampling check fails\n");
-        printf("\t14\tControl bits check fails\n");
-        printf("\t15\tCheck bits check fails\n");
-        printf("\t16\tOverflow of SB and ESB (should never occur, please contact author if it did)\n");
-        printf("\t17\tError during conversion from 10 bits to 11 bits (11-bit value not found in list of transformation words)\n");
-        printf("\t18\tShaped contents do not match the unshaped contents (encoding error)\n");
+        printf("\t%d\tNo error\n", ERR_NO_ERR);
+        printf("\t%d\tNo input specified\n", ERR_NO_INPUT);
+        printf("\t%d\tA logical error (not further specified)\n", ERR_LOGICAL_ERROR);
+        printf("\t%d\tError creating output file\n", ERR_OUTPUT_FILE);
+        printf("\t%d\tError during memory allocation\n", ERR_MEM_ALLOC);
+        printf("\t%d\tError in the input data (wrong size, illegal chars, ...)\n", ERR_INPUT_ERROR);
+        printf("\t%d\tAlphabet condition fails\n", ERR_ALPHABET);
+        printf("\t%d\tOff-sync parsing condition fails\n", ERR_OFF_SYNCH_PARSING);
+        printf("\t%d\tAperiodicity condition fails\n", ERR_APERIODICITY);
+        printf("\t%d\tUndersampling check fails\n", ERR_UNDER_SAMPLING);
+        printf("\t%d\tControl bits check fails\n", ERR_CONTROL_BITS);
+        printf("\t%d\tCheck bits check fails\n", ERR_CHECK_BITS);
+        printf("\t%d\tOverflow of SB and ESB (should never occur, please contact author if it did)\n", ERR_SB_ESB_OVERFLOW);
+        printf("\t%d\tError during conversion from 10 bits to 11 bits (11-bit value not found in list of transformation words)\n", ERR_11_10_BIT);
+        printf("\t%d\tShaped contents do not match the unshaped contents (encoding error)\n", ERR_CONTENT);
 
         return ERR_NO_ERR;
     }

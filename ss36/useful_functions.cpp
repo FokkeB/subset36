@@ -17,6 +17,12 @@
 #include <string.h>
 #include "telegram.h"
 
+bool check_verbose(int v)
+// returns true if v <= current verbosity level
+{
+	return v <= verbose;
+}
+
 void print_hex (int v, unsigned char *bin, unsigned int n)
 // prints the n binvalues in bin in hex-format, adds spaces to increase readability
 // uses verbosity v
@@ -52,7 +58,7 @@ void print_bin (int v, uint64_t printme, int n)
         else
             eprintf(v, "0");
 
-        if (i%4==0)    
+        if ( (i%4==0) && (i!=0) )
             eprintf(v, " ");
     }
 }
@@ -83,7 +89,6 @@ unsigned int hex_to_bin(string hexstr, uint8_t* binstr)
 
     return w + 1;
 }
-
 
 //Base64 char table - used internally for encoding
 unsigned char b64_chr[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";

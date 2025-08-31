@@ -14,8 +14,9 @@
 
 telegram* parse_input_line(const char* line_orig)
 // parses the input line, creates and fills the telegram
-// returns a pointer to a telegram if all went well, or NULL if not
-// todo: make string out of line?
+// returns a pointer to a telegram if all went well, NULL if the line is empty (or only contains comments),
+// ERR_INPUT_ERROR if the contents of the line could not be parsed
+// tbd: make string out of line?
 {
     char* p=NULL, line[MAX_ARRAY_SIZE];
     telegram* p_telegram;
@@ -42,7 +43,9 @@ telegram* parse_input_line(const char* line_orig)
         return NULL;
 
     // create new telegram, fill with dummy values
-    p_telegram = new telegram("", s_long); 
+    p_telegram = new telegram("", s_long);
+//    p_telegram = new telegram((string)line, s_long);
+    p_telegram->errcode = ERR_NO_ERR;
 
     // see if there is a comma or semicolon. If so: read in both values
     p = strchr(line, ',');
@@ -53,24 +56,19 @@ telegram* parse_input_line(const char* line_orig)
     // comma or semicolon found, p points at it
     {
         *p = '\0';     // terminate the string at the comma
-
-        if (p_telegram->parse_input((string)line) != ERR_NO_ERR)  // parse the first part of the string
-        // destroy the telegram if a parsing error occured and continue to the next:
-        {
-            delete(p_telegram);
-            return NULL;
-        }
-
+        p_telegram->parse_input((string)line);  // parse the first part of the string
+        if (p_telegram->errcode != ERR_NO_ERR)
+        // something went wrong with the parsing, skip parsing the rest of the line
+            return p_telegram;
         p++; // increase p to point to the location next to where the ',' or ';' used to be
     }
     else
         p = line;
 
-    if (p_telegram->parse_input((string)p))  // parse the second part of the string
-    {
-        delete(p_telegram);
-        return NULL;
-    }
+    p_telegram->parse_input((string)p);  // parse the second part of the string
+    if (p_telegram->errcode != ERR_NO_ERR)
+    // something went wrong with the parsing, skip the rest
+        return p_telegram;
 
     if (p_telegram->number_of_userbits)
     // the unshaped data is set, print it
@@ -103,26 +101,25 @@ t_telegramlist parse_content_string(const string& contents_orig)
     string contents = contents_orig + "\n";
 
     for (found = contents.find(LINE_DELIM); found != string::npos; found = contents.find(LINE_DELIM, start))
-    // iterate over the lines (separated by LINE_DELIM in contents
+        // iterate over the lines (separated by LINE_DELIM in contents)
     {
         line = contents.substr(start, found - start).c_str();
         linecount++;
         start = found + 1;
         eprintf(VERB_GLOB, "\nRead in line #%d:\t\"%s\"", linecount, line.c_str());
-        if ((p_new_telegram = parse_input_line(line.c_str())) == NULL)
-            // illegal contents, skip this line
-        {
-            eprintf(VERB_GLOB, "-> SKIPPED\n");
-            continue;
-        }
+        p_new_telegram = parse_input_line(line.c_str());
+        if (!p_new_telegram)
+            eprintf(VERB_GLOB, " -> Skipped line\n");
         else
         {
-            // add line to list of telegrams:
             telegramlist.push_back(p_new_telegram);
-            eprintf(VERB_GLOB, "-> parsed OK\n");
+            if (p_new_telegram->errcode == ERR_NO_ERR)
+                eprintf(VERB_GLOB, " -> parsed OK\n");
+            else
+                eprintf(VERB_GLOB, " -> parse error\n");
+
         }
     }
-
     return telegramlist;
 }
 

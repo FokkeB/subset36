@@ -18,6 +18,15 @@ longnum::longnum(int with)
     fill(with);
 }
 
+longnum::longnum(t_word* init_val, int count)   
+// constructor, fills with indicated values
+{
+    int i;
+
+    for (i = 0; i < count; i++)
+        value[i] = init_val[i];
+}
+
 longnum longnum::operator << (int count) const
 // shift left << operator overload
 {
@@ -260,31 +269,37 @@ bool longnum::operator == (const longnum ln2)
 }
 
 bool longnum::operator != (const longnum ln2)
-// returns true if contents of ln1 and ln2 are the same, false otherwise, != operator overload
+// returns true if contents of ln1 and ln2 differ, false if they are equal, != operator overload
 {
-    return !(*this == ln2); // .value, sizeof(t_longnum)) != 0);
+    return !(*this == ln2); 
 }
 
 void longnum::write_at_location(unsigned int location, const t_word* newvalue, int n_bits)
 // writes the first n bits of newvalue (array of t_word) to longnum @ bitposition location [0..N-1]
 // stops when the last bit of longnum is reached
 {
-    if (location >= BITS_IN_LONGNUM) //|| (location < 0))
-        // location outside of longnum; don't do anything
+    if (location >= BITS_IN_LONGNUM) 
+    // location outside of longnum; don't do anything
         return;
 
     if (location + n_bits >= BITS_IN_LONGNUM)
-        // shorten n_bits to stay within longword
+    // shorten n_bits to stay within longword
         n_bits = BITS_IN_LONGNUM - location;
 
     for (int i = 0; i < n_bits; i++)
-        // iterate over newvalues, put them in the right place
+    // iterate over newvalues, put them in the right place
     {
         int n_word = i / BITS_IN_WORD;
         int n_bit = i % BITS_IN_WORD;
 
         set_bit(location + i, (newvalue[n_word] >> n_bit) & 1);
     }
+}
+
+void longnum::write_at_location(unsigned int location, const t_word newvalue, int n_bits)
+// writes the first n_bits of newvalue to the longnum
+{
+    write_at_location(location, &newvalue, n_bits);
 }
 
 int longnum::get_order(void) const
@@ -346,7 +361,7 @@ void longnum::print_bin(int v)
 
     return_if_silent(v);
 
-    for (j = (order / BITS_IN_WORD)-1; j >= 0; j--)
+    for (j = (order / BITS_IN_WORD); j >= 0; j--)
     {
         printf("#%02d=", j);
         for (int i = BITS_IN_WORD - 1; i >= 0; i--)
@@ -381,7 +396,7 @@ int longnum::sprint_hex(string& line, int n)
 // returns the amount of chars written
 // write per byte (instead of per whole word) to prevent unwanted leading 0's 
 {
-    int i=0, j;
+    int j;
     t_word w;
     char temp[3];
 
@@ -392,7 +407,6 @@ int longnum::sprint_hex(string& line, int n)
         w = get_word(j * 8);
         sprintf_s(temp, 3, "%02X", w & 0xFF);
         line += temp;
-        i += 2;
     }
 
     return (int)line.length();
@@ -420,6 +434,7 @@ void longnum::print_fancy(int v, int wordlength, int size, t_longnum_layout* lon
  * - prints the bitnum of the first bit of the word in dark grey
  * - prints the bits in the indicated color (start, length, color).  Last struct must have length set to 0. Set *longnum_layout to NULL if no coloring is needed.
  * - uses v as verbosity level
+ * TBD: wraparound coloring
 */
 {
     int i, layout_count, layout_index;
