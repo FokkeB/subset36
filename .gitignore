@@ -36,3 +36,7 @@
 /x64/Release/tester.pdb
 /ss36.sln
 /.gitattributes
+/py_balise/balise_codec.pyd
+/x64/Release
+/out.csv
+/outvgl.xlsx
