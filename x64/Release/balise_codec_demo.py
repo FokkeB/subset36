@@ -25,7 +25,7 @@ print ("Information about the function 'convert':")
 help(convert)
 
 # read input from file (which is formatted as described above)
-with open(r'Z:\Fokke\Nerdsels\Projecten\ss36\testset\dummy_input.csv', 'r') as file:
+with open(r'dummy_input.csv', 'r') as file:
     data = file.read()
 
 # convert the data and print it

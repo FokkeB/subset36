@@ -1,9 +1,9 @@
 /**
  * balise_codec - an open source library to encode and decode Eurobalise messages as described in Subset 36 (FFFIS for Eurobalise, v3.1.0, Dec 17th 2015)
  * Copyright 2023, Fokke Bronsema, fokke@bronsema.net, version 4, February 2024. Published on: https://github.com/FokkeB/subset36.
- * 
+ *
  * DISCLAIMER: use at your own risk, the author is not responsible for incorrect en-/decoded messages leading to train related mayhem.
- * 
+ *
  * Sources:
  * https://www.era.europa.eu/system/files/2023-01/sos3_index009_-_subset-036_v310.pdf (paragraph 4.3.2)
  * https://lemmatalogic.com/lfsrscrambler/
@@ -23,14 +23,15 @@
 #ifndef TELEGRAM_H
 #define TELEGRAM_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <string>
 #include "colors.h"
 #include "longnum.h"
 #include "transformation_words.h"
-using namespace std;
+#include <stdio.h>
+#include <stdlib.h>
+//#include <forward_list>
+#include <time.h>
+#include <string>
+using std::string;
 
 #define BITLENGTH_LONG_TELEGRAM     1023            // length of long telegram
 #define BITLENGTH_SHORT_TELEGRAM    341             // length of short telegram
@@ -58,7 +59,7 @@ enum t_size { s_short = BITLENGTH_SHORT_TELEGRAM, s_long = BITLENGTH_LONG_TELEGR
 enum t_align { a_undef = 0, a_enc = 1, a_calc = 2 };   // a_undef means undefined coding; a_enc means coding used for reading/writing to disk; a_calc means coding used in calculations
 
 typedef uint32_t t_H;
-static const t_H H = 1<<31 | 1<<30 | 1<<29 | 1<<27 | 1<<25 | 1;  // initial coefficients of shift register 
+static const t_H H = 1 << 31 | 1 << 30 | 1 << 29 | 1 << 27 | 1 << 25 | 1;  // initial coefficients of shift register 
 
 // color layout of a telegram:
 static t_longnum_layout telegram_coloring_scheme[5] =
@@ -70,23 +71,22 @@ static t_longnum_layout telegram_coloring_scheme[5] =
     {0, 0, ""}
 };
 
+// general error codes:
 #define ERR_NO_ERR              0       // all OK
-#define ERR_NO_INPUT            1       // no input specified
-#define ERR_LOGICAL_ERROR       2       // a logical error has occurred
-#define ERR_OUTPUT_FILE         3       // error creating output file
-#define ERR_MEM_ALLOC           4       // error allocating memory
-#define ERR_INPUT_ERROR         5
+#define ERR_LOGICAL_ERROR       1       // a logical error has occurred
+#define ERR_MEM_ALLOC           2       // error allocating memory
+#define ERR_INPUT_ERROR         3       // error in input
 
 // error codes from the subset 36:
-#define ERR_ALPHABET            10
-#define ERR_OFF_SYNCH_PARSING   11
-#define ERR_APERIODICITY        12
-#define ERR_UNDER_SAMPLING      13
-#define ERR_CONTROL_BITS        14
-#define ERR_CHECK_BITS          15
-#define ERR_SB_ESB_OVERFLOW     16       // overflow of SB and ESB
-#define ERR_11_10_BIT           17       // error during conversion
-#define ERR_CONTENT             18       // shaped content does not match unshaped content
+#define ERR_ALPHABET            100
+#define ERR_OFF_SYNC_PARSING    101
+#define ERR_APERIODICITY        102
+#define ERR_UNDER_SAMPLING      103
+#define ERR_CONTROL_BITS        104
+#define ERR_CHECK_BITS          105
+#define ERR_SB_ESB_OVERFLOW     106       // overflow of SB and ESB
+#define ERR_11_10_BIT           107       // error during conversion
+#define ERR_CONTENT             108       // shaped content does not match unshaped content
 
 // expected input sizes of shaped telegrams: 
 #define N_CHARS_SHAPED_LONG_HEX          256    // 2 char/byte, 1024 bits/8=128 bytes=256 chars. So: SHR 1 to loose 1 bit to get to 1023 bits in complete telegram.
@@ -114,28 +114,32 @@ public:
     enum t_align        alignment;                  // current alignment of the bits in the telegram: for hex/base64 encoding (a_enc) or for calculations (a_calc).
     unsigned int        number_of_userbits;         // #unshaped (10->11) user bits (m=N_USERBITS_L or N_USERBITS_S)
     unsigned int        number_of_shapeddata_bits;  // #bits in shaped data (N_SHAPEDDATA_L or N_SHAPEDDATA_S; =11/10*number_of_userbits)
-    int                 word9, word10;              // indices of the two transformation words in which the control bits, scrambling bits and extra shaping bits are located (see function "shape")
-    bool                force_long=false;           // if true: make a long telegram out of this (if this is not already the case). If false: don't mess with the sizes
+    int                 word8, word9, word10;       // indices of the two transformation words in which the control bits, scrambling bits and extra shaping bits are located (see function "shape")
+    //    t_word              cb_sb_esb;                  // the control bits, shaping bits and extra shaping bits of this telegram
+    bool                force_long = false;         // if true: make a long telegram out of this (if this is not already the case). If false: don't mess with the sizes
+    int                 variant_index = 1;          // this is the nth version of this shaped telegram
+    telegram*           next = NULL;                // pointer to next telegram in linked list
 
     // function prototypes:
     // start with some initialisers, getters, setters and other useful functions:
     telegram(const string inputstr, enum t_size newsize);
+    //    ~telegram();
     void set_size(enum t_size newsize);
     void make_userdata_long();
     int parse_input(const string inputstr);
     void set_checkbits(const t_checkbits checkbits);
-    void get_checkbits(longnum& checkbits);  
+    void get_checkbits(longnum& checkbits);
     void set_extra_shaping_bits(t_esb esb);
     t_esb get_extra_shaping_bits(void);
     void set_scrambling_bits(t_sb sb);
     t_sb get_scrambling_bits(void);
     void set_control_bits(t_word cb);
     t_cb get_control_bits();
-//    void set_shaped_data(const longnum sd);   // unused and untested
-//    void get_shaped_data(longnum& sd);        // unused and untested
+    //    void set_shaped_data(const longnum sd);   // unused and untested
+    //    void get_shaped_data(longnum& sd);        // unused and untested
     void print_contents_fancy(int v);
     void align(enum t_align new_alignment);
-    void shape(void);
+    int shape(void);
     void deshape(longnum& userdata);
     void deshape(void);
     int check_shaped_telegram(void);
@@ -148,18 +152,18 @@ private:
     void scramble_user_data(t_S S, t_H H, const longnum& user_data_orig, longnum& user_data_scrambled, int m);
     void transform10to11(const longnum& userdata);
     int transform11to10(longnum& userdata);
-    void descramble(t_S S, t_H H, longnum& user_data, int m);  
+    void descramble(t_S S, t_H H, longnum& user_data, int m);
     void calc_first_word(longnum& U, unsigned int m);
     void compute_check_bits(void);
     t_sb set_next_sb_esb(void);
 
     // functions needed to perform the tests of candidate telegrams (see subset 36, 4.3.2.5):
-    int perform_candidate_checks(int v, int* err_location);  
+    int perform_candidate_checks(int v, int* err_location);
     int check_alphabet_condition(void);
     int check_off_synch_parsing_condition(void);
     int calc_hamming_distance(t_word word1, t_word word2);  // part of aperiodicity condition
     int check_aperiodicity_condition(void);
-    int get_max_run_valid_words(const longnum& ln);  
+    int get_max_run_valid_words(const longnum& ln);
     int check_undersampling_condition(void);
 
     // additional functions needed to perform checks of the telegram:
@@ -168,6 +172,8 @@ private:
 };
 
 // define a list type of telegrams:
-typedef std::list<telegram*> t_telegramlist;
+//typedef std::list<telegram*> t_telegramlist;
+//typedef std::forward_list<telegram*> t_telegramlist;
+// define a list type of telegrams:
 
 #endif
