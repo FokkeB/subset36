@@ -58,6 +58,7 @@ private:
 
 public:
 	longnum(int with = 0);   // constructor, default set to 0
+	longnum(t_word* init_val, int count);   // constructor, fills with indicated values
 	longnum operator << (int count) const;
 	longnum& operator <<= (int count);
 	longnum operator >> (int count) const;
@@ -72,7 +73,8 @@ public:
 	void set_bit(int bitnum, int value);  
 	bool operator == (const longnum ln2);
 	bool operator != (const longnum ln2);
-	void write_at_location(unsigned int location, const t_word* newvalue, int n_bits);		// write an array of t_words
+	void write_at_location(unsigned int location, const t_word* newvalue, int n_bits);		// write an array of t_words   
+	void write_at_location(unsigned int location, const t_word newvalue, int n_bits);		// write one t_word
 	int get_order(void) const;
 	void read_from_array(uint8_t* arr, int n);
 	void write_to_array(uint8_t* arr, int n);

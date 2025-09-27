@@ -39,6 +39,9 @@ extern int verbose;
         return;                             \
     } while (0)
 
+bool check_verbose(int v);
+// returns true if v <= current verbosity level
+
 void print_hex(int v, unsigned char* bin, unsigned int n);
 void print_bin(int v, uint64_t printme, int n);
 unsigned int hex_to_bin(string hexstr, uint8_t* binstr);
@@ -57,6 +60,5 @@ unsigned int b64_encode(const uint8_t* in, unsigned int in_len, string& out);
 // out : pointer to buffer with enough memory, user is responsible for memory allocation, receives "raw" binary
 // returns size of output excluding null byte
 unsigned int b64_decode(string in, uint8_t* out);
-
 
 #endif
