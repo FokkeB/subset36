@@ -1,16 +1,22 @@
 ## ETCS Subset 36 balise encoding and decoding ("balise_codec")
 
-Encode and decode Eurobalise contents as described in ETCS subset 36 (FFFIS for Eurobalise, v3.1.0, Dec 17th 2015
-By Fokke Bronsema, fokke@bronsema.net, version 5, March 14th 2025 (PI DAY!), released under the GNU Lesser General Public License.
+Encode and decode Eurobalise contents as described in ETCS subset 36 (FFFIS for Eurobalise, v4.0.0, 05/07/2023)
+By Fokke Bronsema, fokke@bronsema.net, version 6, September 27th, 2025, released under the GNU Lesser General Public License.
+
+### Changes since version 5: 
+- removed the "-all"-function;
+- implemented various optimisations as suggested by ZHUO Peng which makes this program muuuuuch faster :-);
+- added an error code (5) about errors in the input data (illegal input packets will no longer be ignored but be marked in the output with this error code)
 
 ### Disclaimer 
 Use this software at your own risk, the author is not responsible for incorrect en-/decoded messages leading to train related mayhem. Even though this software was tested against a few thousand Dutch Eurobalises from different manufacturers, errors may still occur.
 
 ### Sources
-- https://www.era.europa.eu/system/files/2023-01/sos3_index009_-_subset-036_v310.pdf (paragraph 4.3.2)
+- https://www.era.europa.eu/system/files/2023-09/index009_-_SUBSET-036_v400.pdf (paragraph 4.3.2)
 - https://lemmatalogic.com/lfsrscrambler/
 - https://www.moria.us/articles/demystifying-the-lfsr/
 - Towards Modeling and Verification of Eurobalise Telegram Encoding Algorithm, Sergey Staroletov, https://www.sciencedirect.com/science/article/pii/S2352146523000728
+- Optimisations: Optimization and Implementation of Balise Telegram Encoding Algorithm_English.pdf (see folder inputdocs)
 
 ### Contents
 This repository contains the following software:
@@ -31,7 +37,6 @@ Usage: compile main.cpp. This yields a command line executable (64-bit Windows e
 - -f, --format_output: output format for the shaped telegram: 'hex' or 'base64' (default).
 - -e, --show_error_codes: shows the meaning of the error codes that can be generated when checking / shaping telegrams.
 - -E, --error_only: output only the telegrams in which an error was found (-e gives the error codes).
-- -a, --all: calculate all possible output telegrams for each input telegram. If not specified, calculations will stop at the first output telegram. Currently only works with option -m1.
  
 For example: 
 
@@ -51,26 +56,24 @@ If only one field is given, the module will calculate the other field. If both i
 The definition of the error codes (0=OK) is given below.
 
 ### Error codes
-
-The error codes below can be generated when checking / shaping a telegram. See SUBSET-036 paragraph 4.3 for more details concerning error codes >= 100.
+The error codes below can be generated when checking / shaping a telegram. See SUBSET-036 paragraph 4.3 for more details concerning error codes >= 10.
 
 Error code Explanation
 - 0       No error
-- 1       A logical error (not further specified)
-- 2       Error during memory allocation
-- 3       Error in input
-- 20      No input specified
-- 21      Error creating output file
-- 22      Error spawning sub process
-- 100     Alphabet condition fails
-- 101     Off-sync parsing condition fails
-- 102     Aperiodicity condition fails
-- 103     Undersampling check fails
-- 104     Control bits check fails
-- 105     Check bits check fails
-- 106     Overflow of SB and ESB (should never occur, please contact author if it did)
-- 107     Error during conversion from 10 bits to 11 bits (11-bit value not found in list of transformation words)
-- 108     Shaped contents do not match the unshaped contents (encoding error)
+- 1       No input specified
+- 2       A logical error (not further specified)
+- 3       Error creating output file
+- 4       Error during memory allocation
+- 5       Error in the input data (wrong size, illegal chars, ...)
+- 10      Alphabet condition fails
+- 11      Off-sync parsing condition fails
+- 12      Aperiodicity condition fails
+- 13      Undersampling check fails
+- 14      Control bits check fails
+- 15      Check bits check fails
+- 16      Overflow of SB and ESB (should never occur, please contact author if it did)
+- 17      Error during conversion from 10 bits to 11 bits (11-bit value not found in list of transformation words)
+- 18      Shaped contents do not match the unshaped contents (encoding error)
 
-### About
-The library in telegram.c/h and the related #includes contain definitions and methods that can be used to encode and decode Eurobalise contents. Please read Subset 36 for more information and a mathematical background. The ss36-library uses another library, longnum.c/h, which deals with low level bit manipulation of long numbers (balise contents can exist of up to 1023 bits), amongst which two Galois Field functions used by the ss36 library for shaping and deshaping the balise contents. The library CLI11 (see https://github.com/CLIUtils/CLI11) is used for parsing the command line. Balise_codec was developed in MS Visual Studio 2022 by fokke@bronsema.net.
+### About and credits
+The library in telegram.c/h and the related #includes contain definitions and methods that can be used to encode and decode Eurobalise contents. Please read Subset 36 for more information and a mathematical background. The ss36-library uses another library, longnum.c/h, which deals with low level bit manipulation of long numbers (balise contents can exist of up to 1023 bits), amongst which two Galois Field functions used by the ss36 library for shaping and deshaping the balise contents. The library CLI11 (see https://github.com/CLIUtils/CLI11) is used for parsing the command line. Balise_codec was developed in MS Visual Studio 2022 by fokke@bronsema.net. Thanks to ZHUO Peng for suggesting various optimisations.

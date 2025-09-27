@@ -1,3 +1,4 @@
+#pragma once
 /**
 * This file is part of "balise_codec".
 * balise_codec is free software: you can distribute it and/or modify it under the terms of the GNU Lesser General Public License as
@@ -10,12 +11,18 @@
 * If not, see < https://www.gnu.org/licenses/>.
 */
 
-#include "transformation_words.h"
+#ifndef TELEGRAM_LIST_H
+#define TELEGRAM_LIST_H
 
-int find11(int val11)
-// returns the index of val11 in the transformation words (returning its index, which is a val10).
-// returns NO_TW (-1) if it does not exist.
-// uses a lookup table that was generated from the transformation words, to save some clock ticks.
+#include "telegram.h"
+
+class telegram_list
 {
-    return transformation_words_inverted[val11];
-}
+	telegram* first = NULL;
+	int count = 0;
+
+	public:
+		telegram* add_after(telegram* after);
+};
+
+#endif

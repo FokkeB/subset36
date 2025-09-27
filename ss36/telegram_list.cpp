@@ -10,12 +10,9 @@
 * If not, see < https://www.gnu.org/licenses/>.
 */
 
-#include "transformation_words.h"
+#include "telegram_list.h"
 
-int find11(int val11)
-// returns the index of val11 in the transformation words (returning its index, which is a val10).
-// returns NO_TW (-1) if it does not exist.
-// uses a lookup table that was generated from the transformation words, to save some clock ticks.
+telegram* telegram_list::add_after(telegram* after)
 {
-    return transformation_words_inverted[val11];
+
 }

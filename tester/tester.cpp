@@ -439,6 +439,35 @@ telegram* create_random_telegram(void)
     return tel;
 }
 
+t_telegramlist generate_random_telegrams(int count)
+// generates a linked list of random telegrams (only unshaped user data, random length)
+// returns a pointer to the first telegram
+{
+    int i = 0;
+    telegram* tel_list = NULL;
+    telegram* current_tel = NULL;
+    t_telegramlist telegramlist;
+
+    for (i = 0; i < count; i++)
+    {
+        if (i == 0)
+        {
+            tel_list = create_random_telegram();
+            current_tel = tel_list;
+        }
+        else
+        {
+            telegramlist.push_back(create_random_telegram());
+//            current_tel->next = create_random_telegram();
+//            current_tel = current_tel->next;
+        }
+    }
+
+    eprintf(VERB_ALL, "Created list of %d random telegrams.\n", count);
+
+    return telegramlist;
+}
+/*
 telegram* generate_random_telegrams(int count)
 // generates a linked list of random telegrams (only unshaped user data, random length)
 // returns a pointer to the first telegram
@@ -456,7 +485,8 @@ telegram* generate_random_telegrams(int count)
         }
         else
         {
-            current_tel->next = create_random_telegram();
+            telegramlist.push_back(create_random_telegram()
+                current_tel->next = create_random_telegram();
             current_tel = current_tel->next;
         }
     }
@@ -465,20 +495,23 @@ telegram* generate_random_telegrams(int count)
 
     return tel_list;
 }
+*/
+
 
 int run_shape_deshape_list_test(int count, int* errcount)
 // runs a shape/deshape test using the multithreading-function from balise_codec.cpp:
 {
     int shaped;
-    telegram* tel_list;
+//    telegram* tel_list;
+    t_telegramlist telegramlist;
 
-    tel_list = generate_random_telegrams(count);
+    telegramlist = generate_random_telegrams(count);
 
     printf("\nShaping random telegrams:\n");
-    shaped = convert_telegrams_multithreaded(tel_list, 0, false);
+    shaped = convert_telegrams_multithreaded(telegramlist, 0);
 
     printf("Checking shaped telegrams:\n");
-    shaped = convert_telegrams_multithreaded(tel_list, 0, false);
+    shaped = convert_telegrams_multithreaded(telegramlist, 0);
 
     return 0;
 }
@@ -488,41 +521,43 @@ int run_make_long_test(int count, int* errcount)
 // returns the amount of errors found
 {
     int i = 0, err = 0;
-    telegram* tel_list;
+//    telegram* tel_list;
     longnum short_data;
+    t_telegramlist telegramlist;
 
-    tel_list = generate_random_telegrams(count);
+    telegramlist = generate_random_telegrams(count);
 
     // iterate over the telegrams in the list:
-    while (tel_list)
+    //while (tel_list)
+    for (telegram*& p_telegram : telegramlist)
     {
         i++;
 
-        if (tel_list->number_of_userbits == N_USERBITS_S)
+        if (p_telegram->number_of_userbits == N_USERBITS_S)
         // only look at short telegrams
         {
             // store the old user data:
-            short_data = tel_list->deshaped_contents;
+            short_data = p_telegram->deshaped_contents;
 
             // make it a long telegram:
-            tel_list->make_userdata_long();
+            p_telegram->make_userdata_long();
 
             // shift the contents right again:
-            tel_list->deshaped_contents >>= (N_USERBITS_L - N_USERBITS_S);
+            p_telegram->deshaped_contents >>= (N_USERBITS_L - N_USERBITS_S);
 
             // check the result:
-            if (short_data != tel_list->deshaped_contents)
+            if (short_data != p_telegram->deshaped_contents)
             {
                 eprintf(VERB_GLOB, ERROR_COLOR "NOK\n" ANSI_COLOR_RESET);
                 eprintf(VERB_GLOB, "\nShort telegram (#%d):\n", i);
                 short_data.print_bin(VERB_GLOB);
                 eprintf(VERB_GLOB, "After calculations:\n");
-                tel_list->deshaped_contents.print_bin(VERB_GLOB);
+                p_telegram->deshaped_contents.print_bin(VERB_GLOB);
                 err++;
             }
         }
 
-        tel_list = tel_list->next;
+        //tel_list = tel_list->next;
     }
 
     *errcount += err;

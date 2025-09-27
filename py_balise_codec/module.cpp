@@ -9,17 +9,18 @@ int verbose = VERB_QUIET;
 static PyObject* convert(PyObject* self, PyObject* args)
 {
     const char* orig_balise_info = NULL;
-    telegram* telegrams;
+    //telegram* telegrams;
     int result = 0;
     string output_string;
+    t_telegramlist telegrams;
 
     if ( (!PyArg_ParseTuple(args, "s", &orig_balise_info)) || (orig_balise_info == NULL) )
         return NULL;
 
     eprintf(VERB_GLOB, "Received from Python:\n %s\n", orig_balise_info);
 
-    telegrams = parse_content_string((string)orig_balise_info, false);
-    result = convert_telegrams_multithreaded(telegrams, 1, false);
+    telegrams = parse_content_string((string)orig_balise_info);
+    result = convert_telegrams_multithreaded(telegrams, 1);
     output_string = output_telegrams_to_string(telegrams, "base64", false, false);
 
     eprintf(VERB_GLOB, "Returning to Python:\n %s\n", output_string.c_str());
