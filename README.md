@@ -63,6 +63,7 @@ Error code Explanation
 - 3       Error creating output file
 - 4       Error during memory allocation
 - 5       Error in the input data (wrong size, illegal chars, ...)
+- 6       Error creating calculation thread or acquiring mutex
 - 10      Alphabet condition fails
 - 11      Off-sync parsing condition fails
 - 12      Aperiodicity condition fails

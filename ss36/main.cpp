@@ -63,8 +63,9 @@ int main(int argc, char** argv)
         printf("\t%d\tNo input specified\n", ERR_NO_INPUT);
         printf("\t%d\tA logical error (not further specified)\n", ERR_LOGICAL_ERROR);
         printf("\t%d\tError creating output file\n", ERR_OUTPUT_FILE);
-        printf("\t%d\tError during memory allocation or mutex acquisition\n", ERR_MEM_ALLOC);
+        printf("\t%d\tError during memory allocation\n", ERR_MEM_ALLOC);
         printf("\t%d\tError in the input data (wrong size, illegal chars, ...)\n", ERR_INPUT_ERROR);
+        printf("\t%d\tError creating calculation thread or acquiring mutex\n", ERR_THREAD_CREATION);
         printf("\t%d\tAlphabet condition fails\n", ERR_ALPHABET);
         printf("\t%d\tOff-sync parsing condition fails\n", ERR_OFF_SYNCH_PARSING);
         printf("\t%d\tAperiodicity condition fails\n", ERR_APERIODICITY);
