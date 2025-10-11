@@ -23,7 +23,7 @@ telegram::telegram(const string inputstr, enum t_size newsize)
     errcode = ERR_NO_ERR;
     alignment = a_undef;
 
-    if (inputstr.length() > 0)    /// tbd: is this needed? Why?
+    if (inputstr.length() > 0)  
         parse_input(inputstr);
     else
         set_size(newsize);
@@ -147,7 +147,6 @@ void telegram::parse_input(const string inputstr)
     // set the alignment of the telegram to encoding:
     alignment = a_enc;
 }
-
 
 void telegram::set_checkbits (const t_checkbits checkbits)
 // sets the checkbits from the indicated array into the telegram contents
@@ -283,19 +282,18 @@ void telegram::align(enum t_align new_alignment)
     alignment = new_alignment;
 }
 
-void telegram::determine_U_tick (longnum& Utick, int m)
+void telegram::determine_U_tick (longnum& Utick)
 // calculates U'(k-1) from U (=telegram contents) and writes it to U (see subset 36, paragraph 4.3.2.2, step 1)
-// m=telegram size
-// tbd: is m needed? 
 {
     t_word sum=0;
+    unsigned int i;
 
-    for (int i=0; i<m/10; i++)
+    for (i=0; i< number_of_userbits/10; i++)
         sum += Utick.get_word(i*10);
 
     sum &= 0x3FF;
 
-    Utick.write_at_location(m-10, &sum, 10);
+    Utick.write_at_location(number_of_userbits-10, &sum, 10);
 }
 
 t_S telegram::determine_S (t_sb sb)
@@ -712,12 +710,12 @@ void telegram::compute_check_bits (void)
 */
 
 void telegram::compute_check_bits_opt(void)
-// compute the check bits as described in Subset 36, 4.3.2.4. Optimisation: do not recalculate the first part of the telegram if the scramble bits haven't changed.
+// compute the check bits as described in Subset 36, 4.3.2.4. Does not recalculate the first part of the telegram if the scramble bits haven't changed.
 // input: a filled telegram (check bits already present will be overwritten)
 // output: the checkbits in bit 0..84 of the telegram
 // note that (as both f and g are constants), g and f*g are used, rather than calculating f*g at each run from f and g
 // does not return an error code as this always works
-// tbd optimisation?: use lookup table and check the alphabet condition while looking up
+// tbd optimisation?: use lookup table 
 {
     longnum remainder, checkbits; 
     int shift, i;
@@ -878,7 +876,7 @@ t_sb telegram::set_next_sb_esb_opt(void)
     t_word cb_sb_esb = 0; 
     signed int old9;
 
-    if (word10 == 0)  // tbd: check initialisation. Still needed?
+    if (word10 == 0)  
     // run for the first time, initialise word10 to point at the first word starting with 001 (=control bits)
     {
         word10 = FIRST_TW_001;
@@ -899,7 +897,7 @@ t_sb telegram::set_next_sb_esb_opt(void)
         // find the next word9 with updated first four bits. Note that this also resets the high 7 bits ESB to the first possible value
         while (old9 == (transformation_words[++word9] & 0b11110000000))  
         {
-            // check if the ESB's overflowed:  TBD: move to set_next_esb_opt
+            // check if the ESB's overflowed:  tbd: move to set_next_esb_opt
             if (word9 == N_TRANS_WORDS-1)
             {
                 // this should only veeeeery rarely happen: 10^-100 (see subset 36, A1.1.1)
@@ -978,7 +976,7 @@ void telegram::shape_opt(void)
     align(a_calc);
 
     Utick = deshaped_contents;
-    determine_U_tick(Utick, number_of_userbits);
+    determine_U_tick(Utick);
     eprintf(VERB_ALL, "\nU'=\n"); Utick.print_bin(VERB_ALL);
     word9 = -1;  // will be set to 0 in the first run of set_next_sb_esb
     word10 = 0;
@@ -1103,7 +1101,7 @@ void telegram::deshape(longnum& userdata)
 }
 
 void telegram::deshape()
-// deshapes the telegram
+// deshapes the telegram into deshaped_contents
 {
     deshape(deshaped_contents);
 }

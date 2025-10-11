@@ -1,7 +1,7 @@
 ## ETCS Subset 36 balise encoding and decoding ("balise_codec")
 
 Encode and decode Eurobalise contents as described in ETCS subset 36 (FFFIS for Eurobalise, v4.0.0, 05/07/2023)
-By Fokke Bronsema, fokke@bronsema.net, version 6, September 27th, 2025, released under the GNU Lesser General Public License.
+By Fokke Bronsema, fokke@bronsema.net, version 7, October 11th, 2025, released under the GNU Lesser General Public License.
 
 ### Changes since version 5: 
 - removed the "-all"-function;

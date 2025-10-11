@@ -79,6 +79,7 @@ static t_longnum_layout telegram_coloring_scheme[5] =
 #define ERR_OUTPUT_FILE         3       // error creating output file
 #define ERR_MEM_ALLOC           4       // error allocating memory
 #define ERR_INPUT_ERROR         5       // error in the input
+#define ERR_THREAD_CREATION     6       // error creating calculation thread or acquiring mutex
 
 // error codes from the subset 36:
 #define ERR_ALPHABET            10
@@ -121,7 +122,7 @@ public:
     bool                force_long=false;           // if true: make a long telegram out of this (if this is not already the case). If false: don't mess with the sizes
     longnum             intermediate;               // for intermediate calculation (BCH1). See step 6 in ZUO Peng's article (partial result of check bits calculation up unto the ESB)
     t_sb                intermediate_sb=0;          // the scrambling bits with which the intermediate was calculated
-//    telegram            *next=NULL;                 // pointer to the next telegram
+    telegram            *next=NULL;                 // pointer to the next telegram
 
     // function prototypes:
     // start with some initialisers, getters, setters and other useful functions:
@@ -152,7 +153,7 @@ public:
 
 private:
     // functions needed to (de)shape a telegram:
-    void determine_U_tick(longnum& Utick, int m);
+    void determine_U_tick(longnum& Utick);
     t_S determine_S(t_sb sb);
     t_S determine_S(void);
     void scramble_user_data(t_S S, t_H H, const longnum& user_data_orig, longnum& user_data_scrambled, int m);
@@ -184,6 +185,6 @@ private:
 };
 
 // define a list type of telegrams:
-typedef std::list<telegram*> t_telegramlist;
+//typedef std::list<telegram*> t_telegramlist;
 
 #endif

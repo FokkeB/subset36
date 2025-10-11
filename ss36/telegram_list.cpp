@@ -14,5 +14,5 @@
 
 telegram* telegram_list::add_after(telegram* after)
 {
-
+	return NULL;
 }

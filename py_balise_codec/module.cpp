@@ -9,10 +9,10 @@ int verbose = VERB_QUIET;
 static PyObject* convert(PyObject* self, PyObject* args)
 {
     const char* orig_balise_info = NULL;
-    //telegram* telegrams;
+    telegram* telegrams;
     int result = 0;
     string output_string;
-    t_telegramlist telegrams;
+    //t_telegramlist telegrams;
 
     if ( (!PyArg_ParseTuple(args, "s", &orig_balise_info)) || (orig_balise_info == NULL) )
         return NULL;

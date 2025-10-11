@@ -17,7 +17,8 @@ int verbose = VERB_PROG;
 
 int main(int argc, char** argv)
 {
-    t_telegramlist telegrams;           // list of telegrams
+    //t_telegramlist telegrams;           // list of telegrams
+    telegram *telegrams = NULL, *p_telegram = NULL;
     int result = ERR_NO_ERR;            // end result of this program (0=success)
     clock_t start, end;
     double execution_time;
@@ -42,12 +43,14 @@ int main(int argc, char** argv)
     app.add_option("-o,--output_filename", output_file, "Write output to this file.");
     app.add_option("-s,--string", literal, "Input string (shaped and/or deshaped string in base64/hex), format identical to one line in the input file.");
     app.add_option("-v,--verbose", verbose, "Level of verbosity: 0 (quiet, only show result), 1 (+show progress, default), 2 (+basic output) or 3 (+lots of output).");
-    app.add_option("-m,--max_cpu", max_cpu, "Max nr of cpu's to use. Multithreading is enabled by default for verbosity <= 1 or if set to 0.");
+    app.add_option("-m,--max_cpu", max_cpu, "Max nr of cpu's to use. Multithreading on all available cores is enabled by default for verbosity <= 1 or if max_cpu is set to 0.");
     app.add_flag("-l,--force_long", force_long, "Force shaping to the long format (1023 bits), even if the unshaped data is of short format (341 bits). This only works on telegrams in which the unshaped user data is set and the shaped data is not set. If not specified, this tool will use the same format as the input data.");
     app.add_option("-f,--format_output", output_format, "Output format for the shaped telegram: 'hex' or 'base64' (default).");
     app.add_flag("-e,--show_error_codes", show_err, "Shows the meaning of the error codes that can be generated when checking / shaping telegrams.");
     app.add_flag("-E,--error_only", error_only, "Output only the telegrams in which an error was found (-e gives the error codes).");
     CLI11_PARSE(app, argc, argv);
+
+    // tbd: add -a option: calculate all
 
     if (show_err)
     // show the meaning of the error messages and die
@@ -60,7 +63,7 @@ int main(int argc, char** argv)
         printf("\t%d\tNo input specified\n", ERR_NO_INPUT);
         printf("\t%d\tA logical error (not further specified)\n", ERR_LOGICAL_ERROR);
         printf("\t%d\tError creating output file\n", ERR_OUTPUT_FILE);
-        printf("\t%d\tError during memory allocation\n", ERR_MEM_ALLOC);
+        printf("\t%d\tError during memory allocation or mutex acquisition\n", ERR_MEM_ALLOC);
         printf("\t%d\tError in the input data (wrong size, illegal chars, ...)\n", ERR_INPUT_ERROR);
         printf("\t%d\tAlphabet condition fails\n", ERR_ALPHABET);
         printf("\t%d\tOff-sync parsing condition fails\n", ERR_OFF_SYNCH_PARSING);
@@ -79,16 +82,12 @@ int main(int argc, char** argv)
 
     // first get the input (either input file or literal)
     if (input_file != "")
-    {
-        // filename is set, load the data from the file:
-        //telegrams = load_telegrams_from_file(input_file);
-
+    // filename is set, load the data from the file:
         telegrams = parse_content_string(read_from_file(input_file));
-    }
     else
     {
-        telegrams.push_back(parse_input_line(literal.c_str()));
-        if (telegrams.front() == NULL)
+        telegrams = parse_input_line(literal.c_str());
+        if (telegrams == NULL)
         {
             eprintf(VERB_QUIET, ERROR_COLOR "ERROR: No input specified, quitting.\n" ANSI_COLOR_RESET);
             exit(ERR_NO_INPUT);
@@ -97,8 +96,15 @@ int main(int argc, char** argv)
 
     // set the force_long parameter of the telegrams:
     if (force_long)
-        for (telegram*& tel : telegrams)
-            tel->force_long = true;
+    {
+        p_telegram = telegrams;
+
+        while (p_telegram)
+        {
+            p_telegram->force_long = true;
+            p_telegram = p_telegram->next;
+        }
+    }
 
     // set the #processes to 1 if the verbosity level is higher than VERB_PROG
     if (verbose > VERB_PROG)
@@ -107,7 +113,7 @@ int main(int argc, char** argv)
     start = clock();
 
     // convert the input to the other format or check the correctness of a telegram:
-    result = convert_telegrams_multithreaded(telegrams, max_cpu);
+    result = convert_telegrams_multithreaded2(telegrams, max_cpu);
 
     end = clock();
     execution_time = ((double)(end - start)) / CLOCKS_PER_SEC;

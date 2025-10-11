@@ -33,8 +33,8 @@
 #define LINE_DELIM '\n'
 
 // prototypes:
-t_telegramlist parse_content_string(const string& contents);
-t_telegramlist read_from_file_into_list(const string filename);
+telegram* parse_content_string(const string& contents);
+telegram* read_from_file_into_list(const string filename);
 telegram* parse_input_line(const char* line);
 
 #endif

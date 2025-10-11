@@ -439,14 +439,13 @@ telegram* create_random_telegram(void)
     return tel;
 }
 
-t_telegramlist generate_random_telegrams(int count)
+telegram* generate_random_telegrams(int count)
 // generates a linked list of random telegrams (only unshaped user data, random length)
 // returns a pointer to the first telegram
 {
     int i = 0;
     telegram* tel_list = NULL;
     telegram* current_tel = NULL;
-    t_telegramlist telegramlist;
 
     for (i = 0; i < count; i++)
     {
@@ -457,15 +456,14 @@ t_telegramlist generate_random_telegrams(int count)
         }
         else
         {
-            telegramlist.push_back(create_random_telegram());
-//            current_tel->next = create_random_telegram();
-//            current_tel = current_tel->next;
+            current_tel->next = create_random_telegram();
+            current_tel = current_tel->next;
         }
     }
 
     eprintf(VERB_ALL, "Created list of %d random telegrams.\n", count);
 
-    return telegramlist;
+    return tel_list;
 }
 /*
 telegram* generate_random_telegrams(int count)
@@ -502,8 +500,7 @@ int run_shape_deshape_list_test(int count, int* errcount)
 // runs a shape/deshape test using the multithreading-function from balise_codec.cpp:
 {
     int shaped;
-//    telegram* tel_list;
-    t_telegramlist telegramlist;
+    telegram* telegramlist;
 
     telegramlist = generate_random_telegrams(count);
 
@@ -521,15 +518,14 @@ int run_make_long_test(int count, int* errcount)
 // returns the amount of errors found
 {
     int i = 0, err = 0;
-//    telegram* tel_list;
     longnum short_data;
-    t_telegramlist telegramlist;
+    telegram *telegramlist, *p_telegram;
 
     telegramlist = generate_random_telegrams(count);
+    p_telegram = telegramlist;
 
     // iterate over the telegrams in the list:
-    //while (tel_list)
-    for (telegram*& p_telegram : telegramlist)
+    while (p_telegram)
     {
         i++;
 
@@ -557,7 +553,7 @@ int run_make_long_test(int count, int* errcount)
             }
         }
 
-        //tel_list = tel_list->next;
+        p_telegram = p_telegram->next;
     }
 
     *errcount += err;
@@ -810,8 +806,8 @@ int main(void)
         print_result(run_shape_test(telegrams, &error_count));
     }
 */
-    printf("Running multithreaded shape/deshape test with 100 random telegrams:\t");
-    print_result(run_shape_deshape_list_test(100, &error_count));
+    printf("Running multithreaded shape/deshape test with 1000 random telegrams:\t");
+    print_result(run_shape_deshape_list_test(1000, &error_count));
 
     return error_count;
 }

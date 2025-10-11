@@ -16,7 +16,6 @@ telegram* parse_input_line(const char* line_orig)
 // parses the input line, creates and fills the telegram
 // returns a pointer to a telegram if all went well, NULL if the line is empty (or only contains comments),
 // ERR_INPUT_ERROR if the contents of the line could not be parsed
-// tbd: make string out of line?
 {
     char* p=NULL, line[MAX_ARRAY_SIZE];
     telegram* p_telegram;
@@ -46,6 +45,7 @@ telegram* parse_input_line(const char* line_orig)
     p_telegram = new telegram("", s_long);
 //    p_telegram = new telegram((string)line, s_long);
     p_telegram->errcode = ERR_NO_ERR;
+    p_telegram->input_string = line_orig;
 
     // see if there is a comma or semicolon. If so: read in both values
     p = strchr(line, ',');
@@ -84,24 +84,24 @@ telegram* parse_input_line(const char* line_orig)
     }
 
     // finally, store the original input string:
-    p_telegram->input_string = line_orig;
+//    p_telegram->input_string = line_orig;
 
     return p_telegram;
 }
 
-t_telegramlist parse_content_string(const string& contents_orig)
-// parses the balise information in contents into a t_telegramlist
+telegram* parse_content_string(const string& contents_orig)
+// parses the balise information in contents into a linked list of telegrams
 {
     size_t start = 0, found;
 
     string line;
     int linecount = 0;    
-    telegram* p_new_telegram;
-    t_telegramlist telegramlist;
+    telegram *p_new_telegram = NULL, *p_start_of_list = NULL, *p_previous_telegram = NULL;
+//    t_telegramlist telegramlist;
     string contents = contents_orig + "\n";
 
     for (found = contents.find(LINE_DELIM); found != string::npos; found = contents.find(LINE_DELIM, start))
-        // iterate over the lines (separated by LINE_DELIM in contents)
+    // iterate over the lines (separated by LINE_DELIM in contents)
     {
         line = contents.substr(start, found - start).c_str();
         linecount++;
@@ -112,18 +112,29 @@ t_telegramlist parse_content_string(const string& contents_orig)
             eprintf(VERB_GLOB, " -> Skipped line\n");
         else
         {
-            telegramlist.push_back(p_new_telegram);
+            if (p_start_of_list == NULL)
+            // this is the first telegram, point p_start_of_list to it
+                p_start_of_list = p_new_telegram;
+            else
+            // not the first, point next in the previous telegram to the new one
+                p_previous_telegram->next = p_new_telegram;
+
+            // remember the previous telegram for the next line
+            p_previous_telegram = p_new_telegram;
+            
+            //telegramlist.push_back(p_new_telegram);
+
             if (p_new_telegram->errcode == ERR_NO_ERR)
                 eprintf(VERB_GLOB, " -> parsed OK\n");
             else
                 eprintf(VERB_GLOB, " -> parse error\n");
-
         }
     }
-    return telegramlist;
+
+    return p_start_of_list;
 }
 
-t_telegramlist read_from_file_into_list (const string filename)
+telegram* read_from_file_into_list (const string filename)
 /** Reads the data from the file into the linked list "records".
  * Returns a pointer to the first record in the list.
  * 
@@ -137,8 +148,8 @@ t_telegramlist read_from_file_into_list (const string filename)
     char* p;
     char line[MAX_ARRAY_SIZE] = { 0 };   // max line length is 382
     int linecount=0;
-    telegram* p_new_telegram;
-    t_telegramlist telegramlist; // = new t_telegramlist();
+    telegram* p_new_telegram = NULL, * p_start_of_list = NULL, * p_previous_telegram = NULL;
+//    t_telegramlist telegramlist; // = new t_telegramlist();
 
     // open the indicated file:
     if (fopen_s(&fp, filename.c_str(), "r"))
@@ -164,10 +175,20 @@ t_telegramlist read_from_file_into_list (const string filename)
             continue;
 
         // add line to list of telegrams:
-        telegramlist.push_back(p_new_telegram);
+//        telegramlist.push_back(p_new_telegram);
+        if (p_start_of_list == NULL)
+            // this is the first telegram, point p_start_of_list to it
+            p_start_of_list = p_new_telegram;
+        else
+            // not the first, point next in the previous telegram to the new one
+            p_previous_telegram->next = p_new_telegram;
+
+        // remember the previous telegram for the next line
+        p_previous_telegram = p_new_telegram;
+
     }
 
     fclose(fp);
 
-    return telegramlist;
+    return p_start_of_list;
 }
