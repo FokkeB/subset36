@@ -3,10 +3,8 @@
 Encode and decode Eurobalise contents as described in ETCS subset 36 (FFFIS for Eurobalise, v4.0.0, 05/07/2023)
 By Fokke Bronsema, fokke@bronsema.net, version 7, October 11th, 2025, released under the GNU Lesser General Public License.
 
-### Changes since version 5: 
-- removed the "-all"-function;
-- implemented various optimisations as suggested by ZHUO Peng which makes this program muuuuuch faster :-);
-- added an error code (5) about errors in the input data (illegal input packets will no longer be ignored but be marked in the output with this error code)
+### Changes since version 6: 
+- Improved multithreading behaviour
 
 ### Disclaimer 
 Use this software at your own risk, the author is not responsible for incorrect en-/decoded messages leading to train related mayhem. Even though this software was tested against a few thousand Dutch Eurobalises from different manufacturers, errors may still occur.
