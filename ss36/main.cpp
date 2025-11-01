@@ -13,11 +13,11 @@
 #include "balise_codec.h"
 #include "CLI11.hpp"            // parse command line parameters
 
-int verbose = VERB_PROG;
+int verbose = VERB_PROG;        // default verbosity, can be overridden by command line option --verbose
 
 int main(int argc, char** argv)
+// the main function from which the rest of the program is called
 {
-    //t_telegramlist telegrams;           // list of telegrams
     telegram *telegrams = NULL, *p_telegram = NULL;
     int result = ERR_NO_ERR;            // end result of this program (0=success)
     clock_t start, end;
@@ -33,31 +33,30 @@ int main(int argc, char** argv)
     bool force_long = false;            // force long format for shaped telegrams
     bool show_err = false;              // show the meaning of the error codes
     bool error_only = false;            // only show output lines that contain an error
-    bool nooptimise = false;            // don't optimise the calculations
+    bool calc_all = false;              // calculate all possible shaped telegrams for each input telegram
 
-    setupConsole();  // for colorful output
+    setupConsole();                     // for colorful output
 
     // setup and parse the command line parameters:
     CLI::App app{ "This is BALISE_CODEC by fokke@bronsema.net. See https://github.com/FokkeB/subset36 for more details. Version: " PROG_VERSION };
     app.add_option("-i,--input_filename", input_file, "Read lines with data from the indicated csv-file (UTF - 8, no BOM) and convert its contents from shaped data to unshaped data and vice versa. This tool automatically determines the used format (base64 / hex) and length (short / long). Lines must be separated by '\\n' ('\\r' will be ignored). If both the shaped and unshaped data are given on one line (separated by a comma or semicolon), this tool will check the correct shaping. Comments must be preceded by '#'.");
     app.add_option("-o,--output_filename", output_file, "Write output to this file.");
-    app.add_option("-s,--string", literal, "Input string (shaped and/or deshaped string in base64/hex), format identical to one line in the input file.");
-    app.add_option("-v,--verbose", verbose, "Level of verbosity: 0 (quiet, only show result), 1 (+show progress, default), 2 (+basic output) or 3 (+lots of output).");
+    app.add_option("-s,--string", literal, "Input string (shaped and/or deshaped string in base64/hex), format identical to one line in the input file. Use quotes to prevent windows from interpreting the ;'s.");
+    app.add_option("-v,--verbose", verbose, "Level of verbosity: 0 (quiet, only show result), 1 (+show progress, default), 2 (+program flow), 3 (+basic output) or 4 (+lots of output).");
     app.add_option("-m,--max_cpu", max_cpu, "Max nr of cpu's to use. Multithreading on all available cores is enabled by default for verbosity <= 1 or if max_cpu is set to 0.");
     app.add_flag("-l,--force_long", force_long, "Force shaping to the long format (1023 bits), even if the unshaped data is of short format (341 bits). This only works on telegrams in which the unshaped user data is set and the shaped data is not set. If not specified, this tool will use the same format as the input data.");
     app.add_option("-f,--format_output", output_format, "Output format for the shaped telegram: 'hex' or 'base64' (default).");
     app.add_flag("-e,--show_error_codes", show_err, "Shows the meaning of the error codes that can be generated when checking / shaping telegrams.");
     app.add_flag("-E,--error_only", error_only, "Output only the telegrams in which an error was found (-e gives the error codes).");
+    app.add_flag("-a,--calc_all", calc_all, "Calculate all valid combinations of scrambling bits (SB) and extra shaping bits (ESB) for each telegram in the input. The output will contain the SB and ESB in two extra columns, as well as the 9th and 10th 11-bit word of each telegram.");
     CLI11_PARSE(app, argc, argv);
-
-    // tbd: add -a option: calculate all
 
     if (show_err)
     // show the meaning of the error messages and die
     {
         printf("The error codes below can be generated when checking / shaping a telegram. \n");
         printf("See SUBSET - 036 paragraph 4.3 for more details concerning error codes >= 10.\n");
-        printf("Increase verbosity to 2 to see detailed information about the errors found during conversion.\n");
+        printf("Increase verbosity to 3 or 4 to see detailed information about the errors found during conversion.\n");
         printf("Error code\tExplanation\n");
         printf("\t%d\tNo error\n", ERR_NO_ERR);
         printf("\t%d\tNo input specified\n", ERR_NO_INPUT);
@@ -114,14 +113,14 @@ int main(int argc, char** argv)
     start = clock();
 
     // convert the input to the other format or check the correctness of a telegram:
-    result = convert_telegrams_multithreaded2(telegrams, max_cpu);
+    result = convert_telegrams_multithreaded(telegrams, max_cpu, calc_all);
 
     end = clock();
     execution_time = ((double)(end - start)) / CLOCKS_PER_SEC;
     eprintf(VERB_PROG, "Calculation time: %.2f secs\n", execution_time);
 
     // determine the output string:
-    output_text = output_telegrams_to_string(telegrams, output_format, error_only, true);
+    output_text = output_telegrams_to_string(telegrams, output_format, error_only, true, calc_all);
 
     // output the result to the indicated medium:
     if (output_file != "")

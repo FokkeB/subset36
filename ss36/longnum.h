@@ -77,12 +77,12 @@ public:
 	void write_at_location(unsigned int location, const t_word newvalue, int n_bits);		// write one t_word
 	int get_order(void) const;
 	void read_from_array(uint8_t* arr, int n);
-	void write_to_array(uint8_t* arr, int n);
-	void print_bin(int v);
-	void print_hex(int v, int n);
-	int sprint_hex(string& line, int n);
-	int sprint_base64(string& line, int n);
-	void print_fancy(int verbosity, int wordlength, int size, t_longnum_layout* longnum_layout);
+	void write_to_array(uint8_t* arr, int n) const;
+	void print_bin(int v) const;
+	void print_hex(int v, int n) const;
+	int sprint_hex(string& line, int n) const;
+	int sprint_base64(string& line, int n) const;
+	void print_fancy(int verbosity, int wordlength, int size, t_longnum_layout* longnum_layout) const;
 
 //	Binary Galois Field operations:
 	longnum operator * (const longnum& q) const;

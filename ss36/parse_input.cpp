@@ -43,9 +43,9 @@ telegram* parse_input_line(const char* line_orig)
 
     // create new telegram, fill with dummy values
     p_telegram = new telegram("", s_long);
-//    p_telegram = new telegram((string)line, s_long);
+//    p_telegram = new telegram((string)line_orig, s_long);  // does not work as the creator will parse the string
     p_telegram->errcode = ERR_NO_ERR;
-    p_telegram->input_string = line_orig;
+    p_telegram->input_string = line_orig;  // do this manually to prevent the creator from parsing the input string
 
     // see if there is a comma or semicolon. If so: read in both values
     p = strchr(line, ',');
@@ -83,9 +83,6 @@ telegram* parse_input_line(const char* line_orig)
         p_telegram->contents.print_fancy(VERB_ALL, 16, p_telegram->size, NULL);
     }
 
-    // finally, store the original input string:
-//    p_telegram->input_string = line_orig;
-
     return p_telegram;
 }
 
@@ -97,7 +94,6 @@ telegram* parse_content_string(const string& contents_orig)
     string line;
     int linecount = 0;    
     telegram *p_new_telegram = NULL, *p_start_of_list = NULL, *p_previous_telegram = NULL;
-//    t_telegramlist telegramlist;
     string contents = contents_orig + "\n";
 
     for (found = contents.find(LINE_DELIM); found != string::npos; found = contents.find(LINE_DELIM, start))
@@ -130,65 +126,6 @@ telegram* parse_content_string(const string& contents_orig)
                 eprintf(VERB_GLOB, " -> parse error\n");
         }
     }
-
-    return p_start_of_list;
-}
-
-telegram* read_from_file_into_list (const string filename)
-/** Reads the data from the file into the linked list "records".
- * Returns a pointer to the first record in the list.
- * 
- * Each line contains either an encoded or decoded telegram.
- * Telegrams can be either encoded in HEX or in BASE64.
- * Comments are preceded by a '#'.
- * This function distinguishes the lines based on the sizes of the data.
- */ 
-{
-    FILE *fp;
-    char* p;
-    char line[MAX_ARRAY_SIZE] = { 0 };   // max line length is 382
-    int linecount=0;
-    telegram* p_new_telegram = NULL, * p_start_of_list = NULL, * p_previous_telegram = NULL;
-//    t_telegramlist telegramlist; // = new t_telegramlist();
-
-    // open the indicated file:
-    if (fopen_s(&fp, filename.c_str(), "r"))
-    {
-        const size_t errmsglen = 100;// strerrorlen_s(errno) + 1;
-        char errmsg[errmsglen];
-        strerror_s(errmsg, errmsglen, errno);
-        eprintf(VERB_QUIET, ERROR_COLOR "Error" ANSI_COLOR_RESET " reading input file ('%s'). Errcode=%s.\n", filename.c_str(), errmsg);
-        exit(ERR_NO_INPUT);
-    }
-    else
-        eprintf(VERB_GLOB, "Reading input from file: %s\n", filename.c_str());
-
-    while ( ( (p=fgets(line, MAX_ARRAY_SIZE, fp)) != NULL) ) // && ( (*telegramcount < MAX_RECORDS) || ((MAX_RECORDS == 0)) ) )
-    // read all lines from the file and parse them
-    {
-        linecount++;
-
-        eprintf(VERB_GLOB, "\nRead in line #%d:\t\"%s\"", linecount, line);
-        
-        if ((p_new_telegram = parse_input_line(line)) == NULL)
-        // illegal contents, skip this line
-            continue;
-
-        // add line to list of telegrams:
-//        telegramlist.push_back(p_new_telegram);
-        if (p_start_of_list == NULL)
-            // this is the first telegram, point p_start_of_list to it
-            p_start_of_list = p_new_telegram;
-        else
-            // not the first, point next in the previous telegram to the new one
-            p_previous_telegram->next = p_new_telegram;
-
-        // remember the previous telegram for the next line
-        p_previous_telegram = p_new_telegram;
-
-    }
-
-    fclose(fp);
 
     return p_start_of_list;
 }

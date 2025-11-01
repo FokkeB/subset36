@@ -16,6 +16,7 @@
 #include "useful_functions.h"
 #include <string.h>
 #include "telegram.h"
+#include "parse_input.h"
 
 bool check_verbose(int v)
 // returns true if v <= current verbosity level

@@ -1,11 +1,13 @@
 ## ETCS Subset 36 balise encoding and decoding ("balise_codec")
 
 Encode and decode Eurobalise contents as described in ETCS subset 36 (FFFIS for Eurobalise, v4.0.0, 05/07/2023)
-By Fokke Bronsema, fokke@bronsema.net, version 7, October 11th, 2025, released under the GNU Lesser General Public License.
+By Fokke Bronsema, fokke@bronsema.net, version 8, November 1st, 2025, released under the GNU Lesser General Public License.
 
-### Changes since version 6: 
-- Improved multithreading behaviour
-
+### Changes since version 7: 
+- Added the "-a" option to calculate all possible shapings of the input telegrams instead of stopping at the first
+- Added a verbosity level to show the program steps
+- Bugfix: this version uses the complete solution space (scramble bits, extra shaping bits) instead of a subset
+ 
 ### Disclaimer 
 Use this software at your own risk, the author is not responsible for incorrect en-/decoded messages leading to train related mayhem. Even though this software was tested against a few thousand Dutch Eurobalises from different manufacturers, errors may still occur.
 
@@ -24,7 +26,7 @@ This repository contains the following software:
 
 ### SS36
 This contains the main library and files to create an executable.
-Usage: compile main.cpp. This yields a command line executable (64-bit Windows executable is included in the folder) with the following command line parameters:
+Usage: compile main.cpp and its required dependencies. Note that telegram.cpp requires c++ 20 or higher because of the use of the population count instruction. This yields a command line executable (64-bit Windows executable is included in the folder) with the following command line parameters:
 
 - -i, --input_filename: read lines with data from the indicated file (UTF-8, no BOM) and convert its contents from shaped data to unshaped data and vice versa. This tool automatically determines the used format (base64/hex) and length (short/long). Lines must be separated by '\n' ('\r' will be ignored). If both the shaped and unshaped data are given on one line (separated by a semicolon), the program will check the correct shaping. Comments must be preceded by '#'.
 - -o, --output_filename: write output to this file.
@@ -35,7 +37,8 @@ Usage: compile main.cpp. This yields a command line executable (64-bit Windows e
 - -f, --format_output: output format for the shaped telegram: 'hex' or 'base64' (default).
 - -e, --show_error_codes: shows the meaning of the error codes that can be generated when checking / shaping telegrams.
 - -E, --error_only: output only the telegrams in which an error was found (-e gives the error codes).
- 
+- -a, --calc_all: calculate all valid combinations of scrambling bits (SB) and extra shaping bits (ESB) for each telegram in the input. The output will contain the SB and ESB in two extra columns, as well as the 9th and 10th 11-bit word of each telegram. 
+
 For example: 
 
     balise_codec.exe -i dummy_input.csv -o dummy_output.csv -f hex -v1

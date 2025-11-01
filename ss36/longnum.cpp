@@ -343,7 +343,7 @@ void longnum::read_from_array(uint8_t* arr, int n)
     }
 }
 
-void longnum::write_to_array(uint8_t* arr, int n)
+void longnum::write_to_array(uint8_t* arr, int n) const
 // converts the first n bytes [0..n] in longnum ln to the char array arr 
 {
     int j;
@@ -352,7 +352,7 @@ void longnum::write_to_array(uint8_t* arr, int n)
         arr[n - j - 1] = get_word(j * 8) & 0xFF;
 }
 
-void longnum::print_bin(int v)
+void longnum::print_bin(int v) const
 // prints longnum in a structured way, nibble by nibble
 // ends with the order of longnum and a CR
 // uses v as verbosity level
@@ -379,7 +379,7 @@ void longnum::print_bin(int v)
     printf(" order: %d\n", order);
 }
 
-void longnum::print_hex(int v, int n)
+void longnum::print_hex(int v, int n) const
 // prints the hex values in longnum (n bits) using verbosity level v
 // write per byte (instead of per whole word) to prevent unwanted leading 0's
 {
@@ -391,7 +391,7 @@ void longnum::print_hex(int v, int n)
         printf("%02X", get_word(j * 8) & 0xFF);
 }
 
-int longnum::sprint_hex(string& line, int n)
+int longnum::sprint_hex(string& line, int n) const
 // writes the first n bits in longnum to *line in hex format    
 // returns the amount of chars written
 // write per byte (instead of per whole word) to prevent unwanted leading 0's 
@@ -412,7 +412,7 @@ int longnum::sprint_hex(string& line, int n)
     return (int)line.length();
 }
 
-int longnum::sprint_base64(string& line, int n)
+int longnum::sprint_base64(string& line, int n) const
 // writes the first n bits in longnum to *line in base64 format
 // returns the amount of chars written
 {
@@ -424,7 +424,7 @@ int longnum::sprint_base64(string& line, int n)
     return (int)line.length();
 }
 
-void longnum::print_fancy(int v, int wordlength, int size, t_longnum_layout* longnum_layout)
+void longnum::print_fancy(int v, int wordlength, int size, t_longnum_layout* longnum_layout) const
 /**
  * prints the longnum binary, in a structured way, with colors! 8-o
  *

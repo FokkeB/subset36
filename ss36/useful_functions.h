@@ -19,11 +19,12 @@
 #include <string>
 using namespace std;
 
-// define verbosity levels:
+// define verbosity levels:   
 #define VERB_QUIET  0       // only output result or fatal errors
 #define VERB_PROG   1       // + show progress
-#define VERB_GLOB   2       // + more detailed messages
-#define VERB_ALL    3       // + messages with very much detail
+#define VERB_FLOW   2       // + program flow
+#define VERB_GLOB   3       // + global information of the calculations
+#define VERB_ALL    4       // + messages with very much detail
 
 extern int verbose;
 
