@@ -405,7 +405,8 @@ int longnum::sprint_hex(string& line, int n) const
     for (j = (n - 1) / 8; j >= 0; j--)
     {
         w = get_word(j * 8);
-        sprintf_s(temp, 3, "%02X", w & 0xFF);
+        //sprintf_s(temp, 3, "%02X", w & 0xFF);
+        snprintf(temp, sizeof(temp), "%02X", w & 0xFF);
         line += temp;
     }
 
@@ -466,7 +467,7 @@ void longnum::print_fancy(int v, int wordlength, int size, t_longnum_layout* lon
             if (longnum_layout[layout_index].start + longnum_layout[layout_index].length - 1 == i)
             {
                 current_color = longnum_layout[layout_index].color;
-                printf(current_color);
+                printf("%s", current_color);
                 break;
             }
         }
@@ -483,7 +484,7 @@ void longnum::print_fancy(int v, int wordlength, int size, t_longnum_layout* lon
             if (longnum_layout[layout_index].start == i)
             {
                 current_color = clear_color;
-                printf(current_color);
+                printf("%s", current_color);
                 break;
             }
         }
@@ -492,7 +493,7 @@ void longnum::print_fancy(int v, int wordlength, int size, t_longnum_layout* lon
             // print the bit number
         {
             printf(BITNUM_COLOR"(%04d)  ", i);
-            printf(current_color);
+            printf("%s", current_color);
         }
 
         if ((i % (wordlength * 4) == 0) && (i != 0))

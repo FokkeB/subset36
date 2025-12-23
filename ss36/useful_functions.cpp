@@ -64,9 +64,10 @@ void print_bin (int v, uint64_t printme, int n)
     }
 }
 
-unsigned int hex_to_bin(string hexstr, uint8_t* binstr)
+signed int hex_to_bin(string hexstr, uint8_t* binstr)
 // converts the contents of a string (ending with \0) with hex-data to the binary values
-// returns the amount of bytes in binstr
+// returns the amount of bytes in binstr if conversion succeeded
+// returns -1 if the conversion failed (illegal characters in input)
 {
     unsigned int w = 0;
 
@@ -80,12 +81,14 @@ unsigned int hex_to_bin(string hexstr, uint8_t* binstr)
         else
             binstr[w] <<= 4;
 
-        if (hexstr[i] <= '9')
-            binstr[w] |= (hexstr[i] - '0');
-        else if (hexstr[i] >= 'a' && hexstr[i] <= 'f')
-            binstr[w] |= hexstr[i] - 'a' + 10;
-        else if (hexstr[i] >= 'A' && hexstr[i] <= 'F')
-            binstr[w] |= hexstr[i] - 'A' + 10;
+		if ((hexstr[i] >= '0') && (hexstr[i] <= '9'))
+			binstr[w] |= (hexstr[i] - '0');
+		else if (hexstr[i] >= 'a' && hexstr[i] <= 'f')
+			binstr[w] |= hexstr[i] - 'a' + 10;
+		else if (hexstr[i] >= 'A' && hexstr[i] <= 'F')
+			binstr[w] |= hexstr[i] - 'A' + 10;
+		else
+			return -1;
     }
 
     return w + 1;
@@ -94,8 +97,9 @@ unsigned int hex_to_bin(string hexstr, uint8_t* binstr)
 //Base64 char table - used internally for encoding
 unsigned char b64_chr[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-unsigned int b64_int(unsigned int ch) {
-
+signed int b64_int(unsigned int ch) 
+// returns the int-value that corresponds to the input char, or -1 if the input char is invalid
+{
 	// ASCII to base64_int
 	// 65-90  Upper Case  >>  0-25
 	// 97-122 Lower Case  >>  26-51
@@ -103,23 +107,25 @@ unsigned int b64_int(unsigned int ch) {
 	// 43     Plus (+)    >>  62
 	// 47     Slash (/)   >>  63
 	// 61     Equal (=)   >>  64~
+
 	if (ch == 43)
 		return 62;
-	if (ch == 47)
+	else if (ch == 47)
 		return 63;
-	if (ch == 61)
+	else if (ch == 61)
 		return 64;
-	if ((ch > 47) && (ch < 58))
+	else if ((ch > 47) && (ch < 58))
 		return ch + 4;
-	if ((ch > 64) && (ch < 91))
+	else if ((ch > 64) && (ch < 91))
 		return ch - 'A';
-	if ((ch > 96) && (ch < 123))
+	else if ((ch > 96) && (ch < 123))
 		return (ch - 'a') + 26;
-	return 0;
+	else
+		return -1;
 }
 
-unsigned int b64_encode(const uint8_t* in, unsigned int in_len, string& outstr) {
-
+unsigned int b64_encode(const uint8_t* in, unsigned int in_len, string& outstr) 
+{
 	unsigned int i = 0, j = 0, k = 0, s[3] = { 0 };
 	char out[MAX_ARRAY_SIZE] = { 0 };
 
@@ -152,24 +158,38 @@ unsigned int b64_encode(const uint8_t* in, unsigned int in_len, string& outstr) 
 	return k;
 }
 
-unsigned int b64_decode(string in, uint8_t* out) {
+signed int b64_decode(string in, uint8_t* out) 
+// Decodes the base64 string "in" to int "out". Note: no size check on out!
+// Returns the amount of ints in out if success or -1 if illegal chars were in the input string
+{
+	unsigned int i = 0, j = 0, k = 0, s[4] = { 0 }, temp;
 
-	unsigned int i = 0, j = 0, k = 0, s[4] = { 0 };
+	for (i = 0; i < in.length(); i++) 
+	{
+		temp = b64_int(in[i]);
+		
+		if (temp == -1)
+			return -1;
+		
+		s[j++] = temp;
 
-	for (i = 0; i < in.length(); i++) {
-		s[j++] = b64_int(in[i]);
-		if (j == 4) {
+		if (j == 4) 
+		{
 			out[k + 0] = ((s[0] & 255) << 2) + ((s[1] & 0x30) >> 4);
-			if (s[2] != 64) {
+			if (s[2] != 64) 
+			{
 				out[k + 1] = ((s[1] & 0x0F) << 4) + ((s[2] & 0x3C) >> 2);
-				if ((s[3] != 64)) {
-					out[k + 2] = ((s[2] & 0x03) << 6) + (s[3]); k += 3;
+				if ((s[3] != 64)) 
+				{
+					out[k + 2] = ((s[2] & 0x03) << 6) + (s[3]); 
+					k += 3;
 				}
 				else {
 					k += 2;
 				}
 			}
-			else {
+			else 
+			{
 				k += 1;
 			}
 			j = 0;

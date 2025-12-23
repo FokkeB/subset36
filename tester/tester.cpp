@@ -20,7 +20,7 @@
 #include "balise_codec.h"     // included to test functions in this file. 
 
 int verbose = VERB_PROG;
-
+ 
 string zp_test_telegram = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFC";
 struct t_result {
     int sb;
@@ -510,16 +510,15 @@ telegram* generate_random_telegrams(int count)
 int run_shape_deshape_list_test(int count, int* errcount)
 // runs a shape/deshape test using the multithreading-function from balise_codec.cpp:
 {
-    int shaped;
     telegram* telegramlist;
 
     telegramlist = generate_random_telegrams(count);
 
     printf("\nShaping random telegrams:\n");
-    shaped = convert_telegrams_multithreaded(telegramlist, 0, false);
+    convert_telegrams_multithreaded(telegramlist, 0, false);
 
     printf("Checking shaped telegrams:\n");
-    shaped = convert_telegrams_multithreaded(telegramlist, 0, false);
+    convert_telegrams_multithreaded(telegramlist, 0, false);
 
     return 0;
 }
@@ -822,10 +821,10 @@ int check_against_zp(int* error_count)
 
     // create the telegram and the shortlist parameters:
     telegram *p_test_telegram = new telegram(zp_test_telegram, s_long);
-    t_shortlist_param shortlist_param = { p_test_telegram, 1, NULL, NULL, true };
+    p_test_telegram->action = act_shape;
 
     // calculate all possible telegrams:
-    convert_shortlist(&shortlist_param);
+    telegram_calc_all(p_test_telegram);
 
     // check the outcome against the results of ZP:
     p_telegram = p_test_telegram;

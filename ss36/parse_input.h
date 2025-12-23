@@ -14,6 +14,7 @@
 #define PARSE_INPUT_H
 
 #include "telegram.h"
+#include <string.h>
 
 // expected input sizes of shaped telegrams: 
 #define N_CHARS_SHAPED_LONG_HEX          256    // 2 char/byte, 1024 bits/8=128 bytes=256 chars. So: SHR 1 to loose 1 bit to get to 1023 bits in complete telegram.

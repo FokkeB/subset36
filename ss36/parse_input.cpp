@@ -20,7 +20,9 @@ telegram* parse_input_line(const char* line_orig)
     char* p=NULL, line[MAX_ARRAY_SIZE];
     telegram* p_telegram;
 
-    strcpy_s(line, line_orig);
+    //strcpy_s(line, line_orig);
+    strncpy(line, line_orig, sizeof(line));
+    line[sizeof(line) - 1] = '\0';
 
     // first remove any comments (starting with '#') from the line
     p = strchr(line, '#');
@@ -45,7 +47,7 @@ telegram* parse_input_line(const char* line_orig)
     p_telegram = new telegram("", s_long);
 //    p_telegram = new telegram((string)line_orig, s_long);  // does not work as the creator will parse the string
     p_telegram->errcode = ERR_NO_ERR;
-    p_telegram->input_string = line_orig;  // do this manually to prevent the creator from parsing the input string
+    p_telegram->input_string = line; // _orig;  // do this manually to prevent the creator from parsing the input string
 
     // see if there is a comma or semicolon. If so: read in both values
     p = strchr(line, ',');

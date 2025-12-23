@@ -1,12 +1,12 @@
 ## ETCS Subset 36 balise encoding and decoding ("balise_codec")
 
 Encode and decode Eurobalise contents as described in ETCS subset 36 (FFFIS for Eurobalise, v4.0.0, 05/07/2023)
-By Fokke Bronsema, fokke@bronsema.net, version 8, November 1st, 2025, released under the GNU Lesser General Public License.
+By Fokke Bronsema, fokke@bronsema.net, version 9, December 23rd, 2025, released under the GNU Lesser General Public License.
 
-### Changes since version 7: 
-- Added the "-a" option to calculate all possible shapings of the input telegrams instead of stopping at the first
-- Added a verbosity level to show the program steps
-- Bugfix: this version uses the complete solution space (scramble bits, extra shaping bits) instead of a subset
+### Changes since version 8: 
+- Added support for Linux (x86, ARM);
+- Uses BS::threadpool (see https://github.com/bshoshany/thread-pool);
+- Improved python module (thanks @ https://github.com/Pierretsc)
  
 ### Disclaimer 
 Use this software at your own risk, the author is not responsible for incorrect en-/decoded messages leading to train related mayhem. Even though this software was tested against a few thousand Dutch Eurobalises from different manufacturers, errors may still occur.
@@ -20,13 +20,15 @@ Use this software at your own risk, the author is not responsible for incorrect 
 
 ### Contents
 This repository contains the following software:
-1. "ss36": this folder contains the main library of this repository. It is used by "main.cpp" to make an executable (see below);
-2. "tester": this program is created to test various functions of the library;
-3. "py_balise_codec": a Python-module to be able to use the library in Python natively, including a demo file called "balise_codec_demo.py";
+1. "ss36": this folder contains the main library of this repository. 
+2. "balise_codec": a command line executable that uses the ss36-library;
+3. "tester": this program is created to test various functions of the library;
+4. "py_balise_codec": a Python-module to be able to use the library in Python natively;
+5. "py_balise": an example implementation using the python library.
 
-### SS36
-This contains the main library and files to create an executable.
-Usage: compile main.cpp and its required dependencies. Note that telegram.cpp requires c++ 20 or higher because of the use of the population count instruction. This yields a command line executable (64-bit Windows executable is included in the folder) with the following command line parameters:
+### balise_codec
+This folder contains main.cpp which uses the ss36-library to create an executable.
+Usage: compile main.cpp and its required dependencies. This yields a command line executable (compiled version for different platforms are included in the folder) with the following command line parameters:
 
 - -i, --input_filename: read lines with data from the indicated file (UTF-8, no BOM) and convert its contents from shaped data to unshaped data and vice versa. This tool automatically determines the used format (base64/hex) and length (short/long). Lines must be separated by '\n' ('\r' will be ignored). If both the shaped and unshaped data are given on one line (separated by a semicolon), the program will check the correct shaping. Comments must be preceded by '#'.
 - -o, --output_filename: write output to this file.
@@ -44,17 +46,7 @@ For example:
     balise_codec.exe -i dummy_input.csv -o dummy_output.csv -f hex -v1
 
 ### Python module
-The Python module "balise_codec.pyd" (a compiled version is included, tested with Python 3.11.5) can be used to convert balise contents in Python natively.
-
-The function 'convert' receives unshaped and/or shaped balise data from Python in a string of lines. Each line is terminated by a newline ('\n') - character and contains one of the following fields, or both (separated by a semicolon) :
-- unshaped hex data (output of balise design process)
-- shaped data (either hex or base64, either short or long)
-
-If only one field is given, the module will calculate the other field. If both input fields are given, the module will verify the correctness (is the shaped data correct? do the two fields match? etc). Comments are preceded with a '#', to allow loading balise data from files with comments. See included example ("dummy_input.csv"). The module returns to Python another string containing one of these lines for each line in the input data:
-
-    <unshaped hex short/long>;<shaped hex/base64 short/long>;<errorcode>\n
-
-The definition of the error codes (0=OK) is given below.
+The Python module (compiled versions are included) can be used to convert balise contents in Python natively. See the example code for more information.
 
 ### Error codes
 The error codes below can be generated when checking / shaping a telegram. See SUBSET-036 paragraph 4.3 for more details concerning error codes >= 10.
@@ -78,4 +70,4 @@ Error code Explanation
 - 18      Shaped contents do not match the unshaped contents (encoding error)
 
 ### About and credits
-The library in telegram.c/h and the related #includes contain definitions and methods that can be used to encode and decode Eurobalise contents. Please read Subset 36 for more information and a mathematical background. The ss36-library uses another library, longnum.c/h, which deals with low level bit manipulation of long numbers (balise contents can exist of up to 1023 bits), amongst which two Galois Field functions used by the ss36 library for shaping and deshaping the balise contents. The library CLI11 (see https://github.com/CLIUtils/CLI11) is used for parsing the command line. Balise_codec was developed in MS Visual Studio 2022 by fokke@bronsema.net. Thanks to ZHUO Peng for suggesting various optimisations.
+The ss36-library contain definitions and methods that can be used to encode and decode Eurobalise contents. Please read Subset 36 for more information and a mathematical background. The ss36-library uses another library, longnum.c/h, which deals with low level bit manipulation of long numbers (balise contents can exist of up to 1023 bits), amongst which two Galois Field functions used by the ss36 library for shaping and deshaping the balise contents. The library CLI11 (see https://github.com/CLIUtils/CLI11) is used for parsing the command line, library https://github.com/bshoshany/thread-pool is used to manage multithreading. Balise_codec was developed in MS Visual Studio 2026 by fokke@bronsema.net. 

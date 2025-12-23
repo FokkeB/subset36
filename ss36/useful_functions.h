@@ -45,21 +45,22 @@ bool check_verbose(int v);
 
 void print_hex(int v, unsigned char* bin, unsigned int n);
 void print_bin(int v, uint64_t printme, int n);
-unsigned int hex_to_bin(string hexstr, uint8_t* binstr);
+signed int hex_to_bin(string hexstr, uint8_t* binstr);
 
 // base64-functions below copied from another library and adjusted for this program
 //Base64 char table function - used internally for decoding
-unsigned int b64_int(unsigned int ch);
+// returns the int-value that corresponds to the input char, or -1 if the input char is invalid
+signed int b64_int(unsigned int ch);
 
 // in : buffer of "raw" binary to be encoded.
 // in_len : number of bytes to be encoded.
 // out : pointer to buffer with enough memory, user is responsible for memory allocation, receives null-terminated string
-// returns size of output including null byte
+// returns size of output including null byte or -1 if illegal chars in input buffer
 unsigned int b64_encode(const uint8_t* in, unsigned int in_len, string& out);
 
 // in : string to be decoded.
 // out : pointer to buffer with enough memory, user is responsible for memory allocation, receives "raw" binary
 // returns size of output excluding null byte
-unsigned int b64_decode(string in, uint8_t* out);
+signed int b64_decode(string in, uint8_t* out);
 
 #endif

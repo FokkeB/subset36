@@ -28,6 +28,10 @@
 #include "useful_functions.h"
 #include <stdlib.h>       // random numbers
 #include <string>
+#include <string.h>
+// TBD: both needed?
+ 
+ 
 
 // longnum is an array[0..WORDS_IN_LONGNUM] of unsigned int32
 // MSB of longnum is bit 7 of int WORDS_IN_LONGNUM

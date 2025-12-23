@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string>
-#include <bit>    // for popcount instruction used in calculation of Hamming distance
+//#include <bit>    // for popcount instruction used in calculation of Hamming distance
 
 #include "colors.h"
 #include "longnum.h"
@@ -110,7 +110,7 @@ static t_longnum_layout telegram_coloring_scheme[5] =
 class telegram
 {
 public:
-    string              input_string;               // original input line
+    string         input_string;               // original input line
     longnum             contents;                   // shaped contents
     enum t_size         size;                       // BITLENGTH_LONG_TELEGRAM (1023) or BITLENGTH_SHORT_TELEGRAM (341)
     longnum             deshaped_contents;          // deshaped contents
@@ -127,7 +127,7 @@ public:
 
     // function prototypes:
     // start with some initialisers, getters, setters and other useful functions:
-    telegram(const string inputstr, enum t_size newsize);  
+    telegram(const string inputstr, enum t_size newsize);
     telegram(const telegram* p_telegram);
     ~telegram(void);
     void set_size(enum t_size newsize);

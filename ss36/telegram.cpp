@@ -98,6 +98,8 @@ void telegram::parse_input(const string inputstr)
 //  - parse the char string into a byte string (so from base64/hex -> binary)
 //  - convert the byte string to a longnum 
 //  - sets the values of telegram
+
+// TBD: check inputstr for illegal chars
 {
     uint8_t arr[MAX_ARRAY_SIZE] = { 0 };   // temporary array to hold the byte array
     int arrsize = 0;                       // #bytes in the temp array
@@ -108,49 +110,72 @@ void telegram::parse_input(const string inputstr)
         case N_CHARS_SHAPED_LONG_HEX:
             set_size(s_long);
             arrsize = hex_to_bin(inputstr, arr);
-            contents.read_from_array(arr, arrsize);
+            if (arrsize != -1)
+                contents.read_from_array(arr, arrsize);
+            else
+                errcode = ERR_INPUT_ERROR;
             break;
 
         case N_CHARS_SHAPED_SHORT_HEX:
             set_size(s_short);
             arrsize = hex_to_bin(inputstr, arr);
-            contents.read_from_array(arr, arrsize);
+            if (arrsize != -1)
+                contents.read_from_array(arr, arrsize);
+            else
+                errcode = ERR_INPUT_ERROR;
             break;
 
         case N_CHARS_SHAPED_LONG_BASE64:
             set_size(s_long);
             arrsize = b64_decode(inputstr, arr);
-            contents.read_from_array(arr, arrsize);
+            if (arrsize != -1)
+                contents.read_from_array(arr, arrsize);
+            else
+                errcode = ERR_INPUT_ERROR;
             break;
 
         case N_CHARS_SHAPED_SHORT_BASE64:
             set_size(s_short);
             arrsize = b64_decode(inputstr, arr);
-            contents.read_from_array(arr, arrsize);
-            break;
+            if (arrsize != -1)
+                contents.read_from_array(arr, arrsize);
+            else
+                errcode = ERR_INPUT_ERROR;            break;
 
         case N_CHARS_UNSHAPED_LONG_HEX:
             set_size(s_long);
             arrsize = hex_to_bin(inputstr, arr);
-            deshaped_contents.read_from_array(arr, arrsize);
+            if (arrsize != -1)
+                deshaped_contents.read_from_array(arr, arrsize);
+            else
+                errcode = ERR_INPUT_ERROR;
             break;
 
         case N_CHARS_UNSHAPED_SHORT_HEX:
             set_size(s_short);
             arrsize = hex_to_bin(inputstr, arr);
-            deshaped_contents.read_from_array(arr, arrsize);
+            if (arrsize != -1)
+                deshaped_contents.read_from_array(arr, arrsize);
+            else
+                errcode = ERR_INPUT_ERROR;
             break;
 
         case N_CHARS_UNSHAPED_LONG_BASE64:
             set_size(s_long);
             arrsize = b64_decode(inputstr, arr);
-            deshaped_contents.read_from_array(arr, arrsize);
+            if (arrsize != -1)
+                deshaped_contents.read_from_array(arr, arrsize);
+            else
+                errcode = ERR_INPUT_ERROR;
             break;
 
         case N_CHARS_UNSHAPED_SHORT_BASE64:
             set_size(s_short);
             arrsize = b64_decode(inputstr, arr);
-            deshaped_contents.read_from_array(arr, arrsize);
+            if (arrsize != -1)
+                deshaped_contents.read_from_array(arr, arrsize);
+            else
+                errcode = ERR_INPUT_ERROR;
             break;
 
         default:
@@ -1288,15 +1313,15 @@ int telegram::calc_hamming_distance(t_word word1, t_word word2)
     // light up the bits that differ by XOR-ing the two input words:
     temp = word1 ^ word2;
     // find the number of 1-bits in temp using the "population count" instruction (available from C++20) (small performance gain above doing this ourselves)
-    hamming_distance = std::popcount(temp);// __popcnt(temp);
-/*
+//    hamming_distance = std::popcount(temp);// __popcnt(temp);
+
     // alternatively, count the amount of set bits:
     while (temp)
     {
         hamming_distance += (temp & 1);
         temp >>= 1;
     }
-*/
+
     return hamming_distance;
 
 }
