@@ -13,12 +13,14 @@
 #ifndef BALISE_CODEC_H
 #define BALISE_CODEC_H
 
-#define MAX_ACTIVE_THREADS 100                  // max amount of threads to spawn. Array size of list of thread handles.
-constexpr char CSV_SEPARATOR = ';';				// separator to be used in output (comma separated values)
-#define PROGRESS_UPDATE_PERIOD 250              // update the progress indicator each PROGRESS_UPDATE_PERIOD msec
-#define VER_FILEVERSION_STR         "9 (December 23rd, 2025)"
- 
-//#include "..\version.h"
+
+constexpr const char* VER_FILEVERSION_STR = "9 (January 25th, 2026)";
+
+
+constexpr int MAX_ACTIVE_THREADS = 100;                 // max amount of threads to spawn. Array size of list of thread handles.
+constexpr char CSV_SEPARATOR = ';';						// separator to be used in output (comma separated values)
+constexpr int PROGRESS_UPDATE_PERIOD = 250;             // update the progress indicator each PROGRESS_UPDATE_PERIOD msec
+
 #include "parse_input.h"        // parse the input into a structured linked list
 #include "telegram.h"           // subset 36 - related functions
 #include "useful_functions.h"   // supporting functions

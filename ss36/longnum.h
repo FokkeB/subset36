@@ -16,7 +16,6 @@
  *
  * Implemented by fokke@bronsema.net
  * To be used for calculation of encoded Eurobalise contents
- * Feb 2024
  *
 */
 
@@ -26,12 +25,8 @@
 #include "colors.h"
 #include <stdint.h>
 #include "useful_functions.h"
-#include <stdlib.h>       // random numbers
-#include <string>
-#include <string.h>
-// TBD: both needed?
- 
- 
+#include <stdlib.h>     // random numbers
+#include <string.h>		// memcmp
 
 // longnum is an array[0..WORDS_IN_LONGNUM] of unsigned int32
 // MSB of longnum is bit 7 of int WORDS_IN_LONGNUM
@@ -70,6 +65,7 @@ public:
 	longnum operator ^ (const longnum& xor_with) const;
 	longnum& operator ^= (const longnum& xor_with);
 	t_word& operator [] (int i);
+	longnum operator ~ (void) const;
 	void fill(int value);
 	t_word get_word(int bitnum) const;
 	t_word get_word_wraparound(int size, int bitnum) const;
@@ -87,6 +83,7 @@ public:
 	int sprint_hex(string& line, int n) const;
 	int sprint_base64(string& line, int n) const;
 	void print_fancy(int verbosity, int wordlength, int size, t_longnum_layout* longnum_layout) const;
+	void rotate(int size, int count);
 
 //	Binary Galois Field operations:
 	longnum operator * (const longnum& q) const;

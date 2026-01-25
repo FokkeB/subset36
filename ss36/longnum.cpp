@@ -151,6 +151,18 @@ t_word& longnum::operator [] (int i)
     return value[i];
 }
 
+longnum longnum::operator ~ (void) const
+// returns the inverse of the longnum
+{
+    longnum result;
+    int i;
+
+    for (i = 0; i < WORDS_IN_LONGNUM; i++)
+        result[i] = ~(value[i]);
+
+    return result;
+}
+
 void longnum::fill(int new_value)
 // sets all bits in longnum to the indicated value (0 or 1) or random (-1)
 {
@@ -435,7 +447,7 @@ void longnum::print_fancy(int v, int wordlength, int size, t_longnum_layout* lon
  * - prints the bitnum of the first bit of the word in dark grey
  * - prints the bits in the indicated color (start, length, color).  Last struct must have length set to 0. Set *longnum_layout to NULL if no coloring is needed.
  * - uses v as verbosity level
- * TBD: wraparound coloring
+ * - with wraparound coloring
 */
 {
     int i, layout_count, layout_index;
@@ -448,10 +460,15 @@ void longnum::print_fancy(int v, int wordlength, int size, t_longnum_layout* lon
         // no layout colors specified
         layout_count = 0;
     else
-        // count the amount of colors
+        // count the amount of colors and position negative starts in the telegram
         for (layout_count = 0; layout_count < MAX_N_LAYOUT; layout_count++)
+        {
             if (longnum_layout[layout_count].length == 0)
                 break;
+
+            if (longnum_layout[layout_count].start < 0)
+                longnum_layout[layout_count].start += size;
+        }
 
     // print some spaces to align the first part
     if (size % wordlength != 0)
@@ -462,9 +479,11 @@ void longnum::print_fancy(int v, int wordlength, int size, t_longnum_layout* lon
         // iterate over the bits
     {
         for (layout_index = 0; layout_index < layout_count; layout_index++)
-            // see if this bits needs some coloring
+            // see if this bit needs some coloring
         {
-            if (longnum_layout[layout_index].start + longnum_layout[layout_index].length - 1 == i)
+            if ( ((longnum_layout[layout_index].start + longnum_layout[layout_index].length) % size - 1 == i) ||  // coloring without wraparound and lower part of coloring with wraparound
+                 ((longnum_layout[layout_index].start + longnum_layout[layout_index].length - 1 > size) && (i==size-1)) // coloring higher part of wraparound
+               )
             {
                 current_color = longnum_layout[layout_index].color;
                 printf("%s", current_color);
@@ -481,7 +500,9 @@ void longnum::print_fancy(int v, int wordlength, int size, t_longnum_layout* lon
         // stop coloring after this bit if needed
         for (layout_index = 0; layout_index < layout_count; layout_index++)
         {
-            if (longnum_layout[layout_index].start == i)
+            if ( (longnum_layout[layout_index].start == i) ||   // no wraparound
+                 (i == 0)                                       // wraparound
+                )
             {
                 current_color = clear_color;
                 printf("%s", current_color);
@@ -502,6 +523,32 @@ void longnum::print_fancy(int v, int wordlength, int size, t_longnum_layout* lon
     }
 
     printf("\nOrder: %d\n", get_order());
+}
+
+void longnum::rotate(int size, int count)
+// rotates the longnum with size size over a distance of count bits
+// does nothing if count == 0
+{
+    int i;
+    longnum ln_temp = *this;
+
+    // translate negative counts and counts > size to rotate left operations over a distance smaller than size:
+    count = (count+size) % size;
+
+    if (count != 0)
+    // rotate left
+    {
+        // first shift left by count steps
+        *this <<= count;
+
+        // copy the bits to the right of the shifted data from the left part of the original data
+        for (i = 0; i < count; i++)
+            set_bit(i, ln_temp.get_bit(size - count + i));
+
+        // reset the unused bits in the left part of the longnum
+        for (i = size; i < BITS_IN_LONGNUM; i++)
+            set_bit(i, ln_temp.get_bit(i));
+    }
 }
 
 longnum longnum::operator * (const longnum& with) const

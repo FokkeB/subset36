@@ -12,10 +12,32 @@
 
 #include "transformation_words.h"
 
-int find11(int val11)
+t_word transform_word10_to_word11(unsigned int val10)
+// converts the 10-bit input to the 11-bit output
+// performs a range check, stops the program if val10 is out of range
+{
+    if (val10 > N_TRANS_WORDS-1)
+    // overflow, stop the program
+    {
+        printf("Overflow error in transform_word10_to_word11 (val10=%d), quitting.\n", val10);
+        exit(ERR_LOGICAL_ERROR);
+    }
+
+    return (t_word)(transformation_words[val10]);
+}
+
+t_word transform_word11_to_word10(unsigned int val11)
 // returns the index of val11 in the transformation words (returning its index, which is a val10).
 // returns NO_TW (-1) if it does not exist.
 // uses a lookup table that was generated from the transformation words, to save some clock ticks.
+// performs a range check, stops the program if val10 is out of range
 {
-    return transformation_words_inverted[val11];
+    if (val11 > N_TW_INVERTED - 1)
+    // overflow, stop the program
+    {
+        printf("Overflow error in transform11to10 (val11=%d), quitting.\n", val11);
+        exit(ERR_LOGICAL_ERROR);
+    }
+
+    return (t_word)transformation_words_inverted[val11];
 }

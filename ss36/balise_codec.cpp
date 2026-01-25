@@ -55,15 +55,19 @@ void convert_telegram(telegram* p_telegram)
         case act_check:
         // both shaped and unshaped; verify that the shaped telegram is correct:
         {
-            // first print the input:
-            eprintf(VERB_GLOB, "INPUT:");
-            eprintf(VERB_GLOB, "\nUnshaped contents (%d bits):\n", p_telegram->number_of_userbits);
-            p_telegram->deshaped_contents.print_fancy(VERB_GLOB, 8, p_telegram->number_of_userbits, NULL);
-            eprintf(VERB_GLOB, "\nShaped contents (%d bits):\n", p_telegram->size);
-            p_telegram->print_contents_fancy(VERB_GLOB);
+            if (verbose >= VERB_GLOB)
+            {
+                p_telegram->align(a_calc);
+                // first print the input:
+                printf("INPUT:");
+                printf("\nUnshaped contents (%d bits):\n", p_telegram->number_of_userbits);
+                p_telegram->deshaped_contents.print_fancy(VERB_GLOB, 8, p_telegram->number_of_userbits, NULL);
+                printf("\nShaped contents (%d bits):\n", p_telegram->size);
+                p_telegram->print_contents_fancy(VERB_GLOB);
 
-            // check the shaped telegram:
-            eprintf(VERB_GLOB, "Perform the condition-checks and content checks of the shaped telegram:\n");
+                // check the shaped telegram:
+                printf("Perform the condition-checks and content checks of the shaped telegram:\n");
+            }
             if (p_telegram->check_shaped_telegram() != ERR_NO_ERR)
                 eprintf(VERB_GLOB, ERROR_COLOR "At least one error occured.\n" ANSI_COLOR_RESET);
 
@@ -74,9 +78,13 @@ void convert_telegram(telegram* p_telegram)
         case act_deshape:
         // only shaped bytes; check the telegram and de-shape it
         {
-            // show the inputs and outputs:
-            eprintf(VERB_GLOB, "INPUT: Shaped telegram of %d bits:\n", p_telegram->size);
-            p_telegram->print_contents_fancy(VERB_GLOB);
+            if (verbose >= VERB_GLOB)
+            {
+                p_telegram->align(a_calc);
+                // show the input shaped telegram:
+                printf("INPUT: Shaped telegram of %d bits:\n", p_telegram->size);
+                p_telegram->print_contents_fancy(VERB_GLOB);
+            }
 
             // check the shaped telegram:
             if (p_telegram->check_shaped_telegram() != ERR_NO_ERR)
@@ -103,7 +111,7 @@ void convert_telegram(telegram* p_telegram)
                 p_telegram->make_userdata_long();
 
             // shape the telegram:
-            p_telegram->shape_opt();
+            p_telegram->shape();
 
             if (p_telegram->errcode != ERR_SB_ESB_OVERFLOW)
             // there was no overflow of SB+ESB, check the telegram:
@@ -145,6 +153,7 @@ void telegram_calc_all(telegram* p_start_telegram)
     int counter = 0;
     telegram *p_telegram = p_start_telegram, *p_temp_telegram = NULL, *p_prev_telegram = NULL, *p_original_next = p_start_telegram->next;
     bool cont = true;
+    int i = 1;
 
     // skip this telegram if there is an error in its input
     if (p_telegram->errcode != ERR_NO_ERR)
@@ -154,7 +163,8 @@ void telegram_calc_all(telegram* p_start_telegram)
     {
         convert_telegram(p_telegram);
         p_telegram->align(a_calc);
-        //eprintf(VERB_GLOB, "i=%d; sb=%d; esb=%d\n", i, p_telegram->get_scrambling_bits(), p_telegram->get_extra_shaping_bits());
+        eprintf(VERB_FLOW, "Finished telegram i=%d; sb=%d; esb=%d\n", i++, p_telegram->get_scrambling_bits(), p_telegram->get_extra_shaping_bits());
+        
         if (p_telegram->action != act_shape)
             return;
 
@@ -163,16 +173,17 @@ void telegram_calc_all(telegram* p_start_telegram)
         // make a copy of the current telegram and add it after the current telegram
         {
             p_temp_telegram = new telegram(p_telegram);  // new telegram with identical contents as p_telegram
+            
             if (!p_temp_telegram)
             {
                 eprintf(VERB_QUIET, "Error allocating memory for a new telegram, quitting.\n");
                 exit(ERR_MEM_ALLOC);
             }
 
-            if (!p_temp_telegram->set_next_esb_opt())   // increase the ESB
+            if (!p_temp_telegram->set_next_esb())   // increase the ESB
                 // ESB overflowed, set the next SB and set word9 to -1 to trigger the rescrambling with the new SB
             {
-                p_temp_telegram->set_next_sb_esb_opt(); // small chance on overflow, this will be dealt with when the new telegram is calculated
+                p_temp_telegram->set_next_sb_esb(); // small chance on overflow, this will be dealt with when the new telegram is calculated
                 p_temp_telegram->word9 = -1;
             }
 
@@ -248,11 +259,11 @@ void convert_telegrams_multithreaded(telegram * telegrams, unsigned int max_cpu,
     if (max_cpu == 0)
     // no max_cpu specified
     {
-        if (telegram_count < std::thread::hardware_concurrency())    
+        if (telegram_count < std::thread::hardware_concurrency())
         // and less telegrams than cpu's
-        {
             max_cpu = telegram_count;
-        }
+        else
+            max_cpu = std::thread::hardware_concurrency();
     }
     else if (telegram_count < max_cpu)
     // max_cpu specified and less telegrams than max_cpu
@@ -260,7 +271,7 @@ void convert_telegrams_multithreaded(telegram * telegrams, unsigned int max_cpu,
      
     BS::thread_pool pool(max_cpu);
     eprintf(VERB_FLOW, "Created thread pool with %d threads.\n", (int)pool.get_thread_count());
-
+    
     // initialise and determine the function needed to perform the calculation: 
     p_telegram = telegrams;
     telegram_counter = 0;
@@ -315,8 +326,6 @@ void convert_telegrams_multithreaded(telegram * telegrams, unsigned int max_cpu,
     return;
 }
 
-
-// tbd: make a struct out of the parameters?
 string output_telegrams_to_string(telegram* telegramlist, const string format, bool error_only, bool include_header, bool calc_all)
 // Returns the telegrams in the same string format in which it is read in:
 // One telegram is written on one line as a line in a csv-file: <decoded hex>;<encoded hex/base64 (param format);errorcode\n
@@ -325,8 +334,8 @@ string output_telegrams_to_string(telegram* telegramlist, const string format, b
 // If include_header, print a header on the first line
 // if format is "hex", output encoded data as hex. If not, output as base64.
 {
-    string output_result = "", line, csv_separators = "";
-    int count, i;
+    string output_result = "", line;
+//    int count, i;
     telegram* p_telegram = telegramlist;
 
     eprintf(VERB_FLOW, "Creating the output string.\n");
@@ -342,65 +351,7 @@ string output_telegrams_to_string(telegram* telegramlist, const string format, b
     while (p_telegram)
     // iterate over telegrams and create a csv-line for each telegram
     {
-        if (!(error_only && (p_telegram->errcode == ERR_NO_ERR)))
-        // skip this telegram if (only errors should be outputted and telegram has no error)
-        {
-            if (p_telegram->errcode == ERR_INPUT_ERROR)
-            // the telegram was not parsed because of an error in the input data
-            // output the original line, CSV_SEPARATOR(s), error code
-            {
-                // Try to add some CSV_SEPARATORs to stick to the output format as much as possible
-                csv_separators = "";
-                count = 0;
-
-                // count the number of CSV_SEPARATORs included in the string:
-                for (i = 0; i < p_telegram->input_string.length(); i++)
-                    if (p_telegram->input_string[i] == CSV_SEPARATOR)
-                        count++;
-
-                // determine the correct number of CVS_SEPARATORs and add them to the end (pointed to by i-1):
-                if ( (count <= 1) || (p_telegram->input_string.at((size_t)(i - 1)) != CSV_SEPARATOR) )
-                    csv_separators.push_back(CSV_SEPARATOR);
-
-                if (count == 0)
-                    csv_separators.push_back(CSV_SEPARATOR);
-
-                // add the line and the separators to the output result:
-                output_result += p_telegram->input_string + csv_separators + to_string(ERR_INPUT_ERROR) + "\n";
-            }
-            else
-            // output the line to a csv-format
-            {
-                p_telegram->align(a_enc);
-
-                // output the deshaped contents followed by a ;
-                p_telegram->deshaped_contents.sprint_hex(line, p_telegram->number_of_userbits);
-                output_result += line;
-                output_result += CSV_SEPARATOR;
-
-                // output the shaped contents, depending on format, followed by a ;
-                if (format == "hex")
-                    p_telegram->contents.sprint_hex(line, p_telegram->size);
-                else
-                    p_telegram->contents.sprint_base64(line, p_telegram->size);
-
-                output_result += line + CSV_SEPARATOR;
-
-                // add the error code and the newline:
-                output_result += to_string(p_telegram->errcode);
-                
-                // add the SB and ESB if calculating all shapings:
-                if (calc_all)
-                {
-                    p_telegram->align(a_calc);
-                    output_result += CSV_SEPARATOR + to_string(p_telegram->get_scrambling_bits()) + CSV_SEPARATOR +
-                        to_string(p_telegram->get_extra_shaping_bits()) +
-                        CSV_SEPARATOR + to_string(p_telegram->word9) + CSV_SEPARATOR + to_string(p_telegram->word10);
-                }
-                output_result += "\n";
-            }
-        }
-
+        output_result += p_telegram->get_csv_output_line(format, error_only, calc_all, CSV_SEPARATOR) + "\n";
         p_telegram = p_telegram->next;
     }
 
@@ -502,10 +453,10 @@ OLD STUFF:
                     exit(ERR_MEM_ALLOC);
                 }
 
-                if (!p_temp_telegram->set_next_esb_opt())   // increase the ESB
+                if (!p_temp_telegram->set_next_esb())   // increase the ESB
                 // ESB overflowed, set the next SB and set word9 to -1 to trigger the rescrambling with the new SB
                 {
-                    p_temp_telegram->set_next_sb_esb_opt(); // small chance on overflow, this will be dealt with when the new telegram is calculated
+                    p_temp_telegram->set_next_sb_esb(); // small chance on overflow, this will be dealt with when the new telegram is calculated
                     p_temp_telegram->word9 = -1;
                 }
 
@@ -823,10 +774,10 @@ int convert_shortlist_thread(t_shortlist_param * shortlist_param)
                     exit(ERR_MEM_ALLOC);
                 }
 
-                if (!p_temp_telegram->set_next_esb_opt())   // increase the ESB
+                if (!p_temp_telegram->set_next_esb())   // increase the ESB
                     // ESB overflowed, set the next SB and set word9 to -1 to trigger the rescrambling with the new SB
                 {
-                    p_temp_telegram->set_next_sb_esb_opt(); // small chance on overflow, this will be dealt with when the new telegram is calculated
+                    p_temp_telegram->set_next_sb_esb(); // small chance on overflow, this will be dealt with when the new telegram is calculated
                     p_temp_telegram->word9 = -1;
                 }
 

@@ -14,15 +14,21 @@
 #ifndef TRANS_H
 #define TRANS_H
 
-// prototype of a lookup-function:
-int find11(int val11);
+#include <stdio.h>		// printf
+#include <stdlib.h>		// exit
+#include "errcodes.h"
+#include "longnum.h"
+
+// prototype of the lookup-functions:
+t_word transform_word10_to_word11(unsigned int val10);
+t_word transform_word11_to_word10(unsigned int val11);
 
 // words used to perform the transformation described in Subset 36 (see ss36.c).
 // copied directly from subset 36, appendix B2: The 10-to-11 bit Transformation Substitution Words.
 
-#define N_TRANS_WORDS   1024
-#define FIRST_TW_001    104 // index of first transformation word starting with 001
-#define LAST_TW_001     260 // index of last transformation word starting with 001
+constexpr int N_TRANS_WORDS = 1024;	// number of transformation words
+constexpr int FIRST_TW_001 = 104;	// index of first transformation word starting with 001
+constexpr int LAST_TW_001 = 260;	// index of last transformation word starting with 001
 
 static unsigned short int transformation_words[N_TRANS_WORDS] = {
 00101, 00102, 00103, 00104, 00105, 00106, 00107, 00110, 00111, 00112,
@@ -35,7 +41,7 @@ static unsigned short int transformation_words[N_TRANS_WORDS] = {
 00226, 00231, 00233, 00244, 00245, 00246, 00253, 00257, 00260, 00261,
 00272, 00273, 00274, 00275, 00276, 00301, 00303, 00315, 00317, 00320,
 00321, 00332, 00334, 00341, 00342, 00343, 00344, 00346, 00352, 00353,
-00357, 00360, 00374, 00376, 00401, 00403, 00404, 00405, 00406, 00407,   // word#104=00401 is first word to start with 0b001, see set_next_sb_esb in ss36.c
+00357, 00360, 00374, 00376, 00401, 00403, 00404, 00405, 00406, 00407,   // word#104=00401 is first word to start with 0b001, see set_next_sb_esb in telegram.c
 00410, 00411, 00412, 00413, 00416, 00417, 00420, 00424, 00425, 00426,
 00427, 00432, 00433, 00442, 00443, 00445, 00456, 00457, 00460, 00461,
 00464, 00465, 00470, 00471, 00472, 00474, 00475, 00476, 00501, 00502,
@@ -51,7 +57,7 @@ static unsigned short int transformation_words[N_TRANS_WORDS] = {
 00722, 00723, 00730, 00731, 00732, 00733, 00734, 00735, 00742, 00743,
 00744, 00745, 00746, 00747, 00750, 00751, 00752, 00753, 00754, 00755,
 00756, 00757, 00760, 00761, 00764, 00765, 00766, 00767, 00772, 00773,
-00776, 01001, 01004, 01005, 01016, 01017, 01020, 01021, 01022, 01023,   // word#260=00776 is last word to start with 0b001, see set_next_sb_esb in ss36.c
+00776, 01001, 01004, 01005, 01016, 01017, 01020, 01021, 01022, 01023,   // word#260=00776 is last word to start with 0b001, see set_next_sb_esb in telegram.c
 01024, 01025, 01030, 01031, 01032, 01033, 01034, 01035, 01043, 01044,
 01045, 01046, 01047, 01054, 01057, 01060, 01061, 01062, 01075, 01076,
 01101, 01102, 01103, 01110, 01114, 01115, 01116, 01117, 01120, 01121,

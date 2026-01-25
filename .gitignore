@@ -103,3 +103,10 @@
 /py_balise/__pycache__
 /CMakeSettings.json
 /CppProperties.json
+/out/build/Linux-GCC-Release-ARM/balise_codec.json
+/out/build/Linux-GCC-Release-x64/balise_codec.json
+/out/build/WIN-x64-Release/balise_codec.json
+/py_balise_codec/__pycache__
+/version.h
+/version.rc
+/testEnvironments.json

@@ -15,10 +15,12 @@ message ("CMAKE_SYSTEM_NAME=" ${CMAKE_SYSTEM_NAME})
 message ("CMAKE_SYSTEM=" ${CMAKE_SYSTEM})
 message ("CMAKE_CURRENT_SOURCE_DIR=" ${CMAKE_CURRENT_SOURCE_DIR})
 
+enable_testing()
+
 # set /MT instead of /MD:
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 add_subdirectory(balise_codec)
-add_subdirectory(tester)
 add_subdirectory(ss36)
 add_subdirectory(py_balise_codec)
+add_subdirectory(tester)

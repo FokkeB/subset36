@@ -38,8 +38,10 @@
 // note that the last struct in this array must have .length set to 0 to stop an overflow.
 typedef struct 
 {
-    unsigned int start, length;         // startbit and length of color
+    signed int start, length;           // startbit and length of color
     char color[MAX_COLOR_LENGTH];       // color to use (ANSI definition)
 } t_longnum_layout;
+
+//t_longnum_layout no_markings = { 0, 0, NULL };   // use if no colors are to be shown
 
 #endif

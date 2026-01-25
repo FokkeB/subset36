@@ -75,14 +75,14 @@ telegram* parse_input_line(const char* line_orig)
     if (p_telegram->number_of_userbits)
     // the unshaped data is set, print it
     {
-        eprintf(VERB_ALL, "\nDecoded %d bits:\n", p_telegram->number_of_userbits);
-        p_telegram->deshaped_contents.print_fancy(VERB_ALL, 16, p_telegram->number_of_userbits+6, NULL);
+        eprintf(VERB_GLOB, "\nDecoded raw input %d bits:\n", p_telegram->number_of_userbits);
+        p_telegram->deshaped_contents.print_fancy(VERB_GLOB, 16, p_telegram->number_of_userbits+6, NULL);
     }
     if (p_telegram->number_of_shapeddata_bits)
     // shaped data is set, print it
     {
-        eprintf(VERB_ALL, "\nCoded %d bits:\n", p_telegram->size);
-        p_telegram->contents.print_fancy(VERB_ALL, 16, p_telegram->size, NULL);
+        eprintf(VERB_GLOB, "\nCoded raw input %d bits:\n", p_telegram->size);
+        p_telegram->contents.print_fancy(VERB_GLOB, 16, p_telegram->size, NULL);
     }
 
     return p_telegram;

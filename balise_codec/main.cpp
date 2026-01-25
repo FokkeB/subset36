@@ -23,6 +23,7 @@ int main(int argc, char** argv)
     clock_t start, end;
     double execution_time;
     string output_text;                 // the output of the program
+    int i;
 
     // command line parameters:
     string input_file = "";             // the input file name
@@ -35,10 +36,10 @@ int main(int argc, char** argv)
     bool error_only = false;            // only show output lines that contain an error
     bool calc_all = false;              // calculate all possible shaped telegrams for each input telegram
 
-    setupConsole();                     // for colorful output
+//    setupConsole();                     // for colorful output
 
     // setup and parse the command line parameters:
-    CLI::App app{ "This is BALISE_CODEC by fokke@bronsema.net. See https://github.com/FokkeB/subset36 for more details. Version: " VER_FILEVERSION_STR };
+    CLI::App app{ "This is BALISE_CODEC by fokke@bronsema.net. See https://github.com/FokkeB/subset36 for more details. Version: " + string(VER_FILEVERSION_STR) };
     app.add_option("-i,--input_filename", input_file, "Read lines with data from the indicated csv-file (UTF - 8, no BOM) and convert its contents from shaped data to unshaped data and vice versa. This tool automatically determines the used format (base64 / hex) and length (short / long). Lines must be separated by '\\n' ('\\r' will be ignored). If both the shaped and unshaped data are given on one line (separated by a comma or semicolon), this tool will check the correct shaping. Comments must be preceded by '#'.");
     app.add_option("-o,--output_filename", output_file, "Write output to this file.");
     app.add_option("-s,--string", literal, "Input string (shaped and/or deshaped string in base64/hex), format identical to one line in the input file. Use quotes to prevent windows from interpreting the ;'s.");
@@ -51,9 +52,14 @@ int main(int argc, char** argv)
     app.add_flag("-a,--calc_all", calc_all, "Calculate all valid combinations of scrambling bits (SB) and extra shaping bits (ESB) for each telegram in the input. The output will contain the SB and ESB in two extra columns, as well as the 9th and 10th 11-bit word of each telegram.");
     CLI11_PARSE(app, argc, argv);
 
-    // tbd: print the command line parameters when verb >= VERB_FLOW
-    //CLI::results_t results = CLI::results_;
-    //for (auto param: app.results())
+    // print the command line parameters when verb >= VERB_FLOW
+    if (verbose >= VERB_FLOW)
+    {
+        printf("Command line:\n");
+        for (i = 0; i < argc; i++)
+            printf("%s ", argv[i]);
+        printf("\n");
+    }
 
     if (show_err)
     // show the meaning of the error messages and die
@@ -68,7 +74,7 @@ int main(int argc, char** argv)
         printf("\t%d\tError creating output file\n", ERR_OUTPUT_FILE);
         printf("\t%d\tError during memory allocation\n", ERR_MEM_ALLOC);
         printf("\t%d\tError in the input data (wrong size, illegal chars, ...)\n", ERR_INPUT_ERROR);
-        printf("\t%d\tError creating calculation thread or acquiring mutex\n", ERR_THREAD_CREATION);
+    //    printf("\t%d\tError creating calculation thread or acquiring mutex\n", ERR_THREAD_CREATION);
         printf("\t%d\tAlphabet condition fails\n", ERR_ALPHABET);
         printf("\t%d\tOff-sync parsing condition fails\n", ERR_OFF_SYNCH_PARSING);
         printf("\t%d\tAperiodicity condition fails\n", ERR_APERIODICITY);
@@ -94,7 +100,7 @@ int main(int argc, char** argv)
         if (telegrams == NULL)
         {
             eprintf(VERB_QUIET, ERROR_COLOR "ERROR: No input specified, quitting.\n" ANSI_COLOR_RESET);
-            restoreConsole();
+//            restoreConsole();
             exit(ERR_NO_INPUT);
         }
     }
@@ -136,7 +142,7 @@ int main(int argc, char** argv)
 //    eprintf(VERB_QUIET, "Ready. Press any key to continue ...");
 //    char dummy = getch();
 
-    restoreConsole();
+//    restoreConsole();
 
     return get_first_error_code (telegrams);
 }

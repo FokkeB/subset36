@@ -20,18 +20,18 @@
 using namespace std;
 
 // define verbosity levels:   
-#define VERB_QUIET  0       // only output result or fatal errors
-#define VERB_PROG   1       // + show progress
-#define VERB_FLOW   2       // + program flow
-#define VERB_GLOB   3       // + global information of the calculations
-#define VERB_ALL    4       // + messages with very much detail
+constexpr int VERB_QUIET = 0;      // only output result or fatal errors
+constexpr int VERB_PROG = 1;       // + show progress
+constexpr int VERB_FLOW = 2;       // + program flow
+constexpr int VERB_GLOB = 3;       // + global information of the calculations
+constexpr int VERB_ALL = 4;        // + messages with very much detail
 
 extern int verbose;
 
 // prints the output only if the verbosity level (set in global var "verbose") allows it
 #define eprintf(level, ...) do {            \
     if (level<=verbose)                     \
-        fprintf (stderr, __VA_ARGS__);      \
+        fprintf (stdout, __VA_ARGS__);      \
     } while (0)
 
 // exits the current function if the requested verbosity level is too large. To be used in functions that do nothing else than printing.

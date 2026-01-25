@@ -1,12 +1,14 @@
 ## ETCS Subset 36 balise encoding and decoding ("balise_codec")
 
 Encode and decode Eurobalise contents as described in ETCS subset 36 (FFFIS for Eurobalise, v4.0.0, 05/07/2023)
-By Fokke Bronsema, fokke@bronsema.net, version 9, December 23rd, 2025, released under the GNU Lesser General Public License.
+By Fokke Bronsema, fokke@bronsema.net, version 9, January 25th, 2026, released under the GNU Lesser General Public License.
 
 ### Changes since version 8: 
 - Added support for Linux (x86, ARM);
 - Uses BS::threadpool (see https://github.com/bshoshany/thread-pool);
-- Improved python module (thanks @ https://github.com/Pierretsc)
+- Improved python module (thanks @ https://github.com/Pierretsc);
+- Added automatic tests via ctest;
+- Many other small changes and bugfixes.
  
 ### Disclaimer 
 Use this software at your own risk, the author is not responsible for incorrect en-/decoded messages leading to train related mayhem. Even though this software was tested against a few thousand Dutch Eurobalises from different manufacturers, errors may still occur.
@@ -22,9 +24,8 @@ Use this software at your own risk, the author is not responsible for incorrect 
 This repository contains the following software:
 1. "ss36": this folder contains the main library of this repository. 
 2. "balise_codec": a command line executable that uses the ss36-library;
-3. "tester": this program is created to test various functions of the library;
-4. "py_balise_codec": a Python-module to be able to use the library in Python natively;
-5. "py_balise": an example implementation using the python library.
+3. "tester": contains various tests to test the executable and python library;
+4. "py_balise_codec": a Python-module to be able to use the library in Python natively, including an example.
 
 ### balise_codec
 This folder contains main.cpp which uses the ss36-library to create an executable.

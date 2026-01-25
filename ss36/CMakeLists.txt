@@ -31,4 +31,5 @@ target_sources(ss36
             telegram.h
             transformation_words.h
             useful_functions.h
+            errcodes.h
 )
