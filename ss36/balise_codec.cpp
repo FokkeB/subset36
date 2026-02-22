@@ -16,6 +16,7 @@ string read_from_file(string filename)
 // reads the balise data from filename and returns the information in one long string
 {
     string s;
+    char UTF_8_BOM[] = { (char)0xef, (char)0xbb, (char)0xbf, (char)0x00 };  // UTF-8 Byte Order Mark
 
     // read the file into a string:
     ifstream f(filename);
@@ -24,6 +25,18 @@ string read_from_file(string filename)
         getline(f, s, '\0');
         f.close();
         eprintf(VERB_FLOW, "Read in telegrams from %s\n", filename.c_str());
+
+        if (!memcmp(UTF_8_BOM, s.c_str(), 3))
+        // A UTF 8 BOM was found, remove it before continuing
+            s.erase(0, 3);
+        else
+            if (s[0] < 0)
+            // another BOM was found, show an error message
+            {
+                printf("Unsupported Byte Order Mark (BOM), please change input to a supported encoding (UTF-8 with or without BOM or ANSI).\n");
+                exit(ERR_INPUT_ERROR);
+            }
+
         return s;
     }
     else
@@ -46,7 +59,7 @@ void convert_telegram(telegram* p_telegram)
     longnum deshaped_data;
 
     // skip this telegram if there is an error in its input
-    if (p_telegram->errcode != ERR_NO_ERR)
+    if ( (p_telegram == nullptr) || (p_telegram->errcode != ERR_NO_ERR) )
         return; 
 
     // determine what we're dealing with (shaped / unshaped / both):
@@ -172,13 +185,15 @@ void telegram_calc_all(telegram* p_start_telegram)
         // calculation went ok, there was no overflow of ESB+SB or other error
         // make a copy of the current telegram and add it after the current telegram
         {
-            p_temp_telegram = new telegram(p_telegram);  // new telegram with identical contents as p_telegram
+            p_temp_telegram = new telegram("", s_short);  // new telegram with dummy values
             
             if (!p_temp_telegram)
             {
                 eprintf(VERB_QUIET, "Error allocating memory for a new telegram, quitting.\n");
                 exit(ERR_MEM_ALLOC);
             }
+            
+            *p_temp_telegram = *p_telegram;
 
             if (!p_temp_telegram->set_next_esb())   // increase the ESB
                 // ESB overflowed, set the next SB and set word9 to -1 to trigger the rescrambling with the new SB
@@ -188,7 +203,7 @@ void telegram_calc_all(telegram* p_start_telegram)
             }
 
             // add the new telegram to the end of the list, right after the current telegram:
-            p_telegram->next = p_temp_telegram; // p_temp_telegram->next was already memcopied
+            p_telegram->next = p_temp_telegram; // p_temp_telegram->next was already copied
             counter++;
         }
         else
@@ -326,32 +341,39 @@ void convert_telegrams_multithreaded(telegram * telegrams, unsigned int max_cpu,
     return;
 }
 
-string output_telegrams_to_string(telegram* telegramlist, const string format, bool error_only, bool include_header, bool calc_all)
+string output_telegrams_to_string(telegram* telegramlist, const string format, bool error_only, bool include_header, bool calc_all, bool include_id)
 // Returns the telegrams in the same string format in which it is read in:
 // One telegram is written on one line as a line in a csv-file: <decoded hex>;<encoded hex/base64 (param format);errorcode\n
 // Ready to be output to screen, file, returned to python function, ...
-// If error_only, only include the telegrams that have an error
-// If include_header, print a header on the first line
-// if format is "hex", output encoded data as hex. If not, output as base64.
+// If error_only, only include the telegrams that have an error.
+// If include_header, print a header on the first line.
+// If format is "hex", output encoded data as hex. If not, output as base64.
+// If calc_all, include the sb and esb in the output.
+// If include_id, include the balise id's in the output (NID_C, NID_BG and N_PIG)
 {
     string output_result = "", line;
-//    int count, i;
     telegram* p_telegram = telegramlist;
 
     eprintf(VERB_FLOW, "Creating the output string.\n");
 
     if (include_header)
+    // add the header to the top of the output, if requested
+    {
+        output_result = string("deshaped") + CSV_SEPARATOR + "shaped" + CSV_SEPARATOR + "errorcode";
+
         if (calc_all)
-            output_result = string("deshaped") + CSV_SEPARATOR + "shaped" + CSV_SEPARATOR + "errorcode" 
-                            + CSV_SEPARATOR + "sb" + CSV_SEPARATOR + "esb"
-                            + CSV_SEPARATOR + "word9" + CSV_SEPARATOR + "word10\n";
-        else
-            output_result = string("deshaped") + CSV_SEPARATOR + "shaped" + CSV_SEPARATOR + "errorcode\n";
+            output_result = output_result + CSV_SEPARATOR + "sb" + CSV_SEPARATOR + "esb" + CSV_SEPARATOR + "word9" + CSV_SEPARATOR + "word10";
+
+        if (include_id)
+            output_result = output_result + CSV_SEPARATOR + "NID_C" + CSV_SEPARATOR + "NID_BG" + CSV_SEPARATOR + "N_PIG";
+
+        output_result += "\n";
+    }
 
     while (p_telegram)
     // iterate over telegrams and create a csv-line for each telegram
     {
-        output_result += p_telegram->get_csv_output_line(format, error_only, calc_all, CSV_SEPARATOR) + "\n";
+        output_result += p_telegram->get_csv_output_line(format, error_only, calc_all, include_id, CSV_SEPARATOR);
         p_telegram = p_telegram->next;
     }
 

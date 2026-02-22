@@ -33,7 +33,7 @@ telegram* parse_input_line(const char* line_orig)
 
     // then clear trailing spaces, CR's, LF's, tabs, separators
     p--;
-    while ((*p == '\n') || (*p == '\r') || (*p == ' ') || (*p == '\t') || (*p == ';') || (*p == ','))
+    while ((p >= line) && (*p == '\n') || (*p == '\r') || (*p == ' ') || (*p == '\t') || (*p == ';') || (*p == ','))
     {
         *p = '\0';
         p--;

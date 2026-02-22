@@ -36,7 +36,7 @@ for inputstring, outputstring in testinputs.items():
     print ("output =", output)
     
     if output != outputstring:
-        print ("Error. Expected output:", outputstring, "Found output:", output)
+        print ("Error. Expected output:\n", outputstring, "\nFound output:\n", output)
         errcount += 1
     else:
         print ("Result OK")

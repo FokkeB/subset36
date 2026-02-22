@@ -23,6 +23,11 @@
 #ifndef TELEGRAM_H
 #define TELEGRAM_H
 
+// Define USE_SCRAMBLE_LOOKUP to use lookup tables instead of bitwise calculations for the scrambling.
+// Note that the lookup table function works (when scrambling, not yet implemented for descrambling), but does not yield a performance improvement.
+// Lookup table function is kept for possible future research.
+// #define USE_SCRAMBLE_LOOKUP 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -30,7 +35,7 @@
 #include "errcodes.h"
 #include "colors.h"
 #include "longnum.h"
-#include "transformation_words.h"
+#include "lookup_tables.h"
 
 constexpr int BITLENGTH_LONG_TELEGRAM = 1023;            // length of long telegram
 constexpr int BITLENGTH_SHORT_TELEGRAM = 341;            // length of short telegram
@@ -61,8 +66,16 @@ enum t_action { act_shape = 0, act_deshape = 1, act_check = 2 };   // action to 
 typedef uint32_t t_H;
 constexpr t_H H = 1<<31 | 1<<30 | 1<<29 | 1<<27 | 1<<25 | 1;  // initial coefficients of shift register 
 
+// type of id of a balise, see subset-026 8.4.2.1:
+typedef struct 
+{
+    unsigned int NID_C;
+    unsigned int NID_BG;
+    char N_PIG;
+} t_balise_id;
+
 // color layout of a telegram:
-static t_longnum_layout telegram_coloring_scheme[5] =
+constexpr t_longnum_layout telegram_coloring_scheme[5] =
 {
     {0, N_CHECKBITS, ANSI_COLOR_GREEN},
     {N_CHECKBITS, N_ESB, ANSI_COLOR_YELLOW},
@@ -101,26 +114,20 @@ public:
     int                 word9, word10;              // indices of the two transformation words in which the control bits, scrambling bits and extra shaping bits are located (see function "shape")
     bool                force_long=false;           // if true: make a long telegram out of this (if this is not already the case). If false: don't mess with the sizes
     longnum             intermediate_remainder;     // for intermediate calculation (BCH1). See step 6 in ZUO Peng's article (partial result of check bits calculation up unto the ESB)
-    longnum             intermediate_quotient;      // to be able to perform a sanity check on the calculation
+    //longnum             intermediate_quotient;      // to be able to perform a sanity check on the calculation
     t_sb                intermediate_sb=0;          // the scrambling bits with which the intermediate was calculated
     t_action            action;                     // the action to be performed on this telegram
     telegram            *next=NULL;                 // pointer to the next telegram
         
     // function prototypes:
-    // start with some initialisers, getters, setters and other useful functions:
+    // start with initialisers and destructor, getters, setters:
     telegram(const string inputstr, enum t_size newsize);
-    telegram(const telegram* p_telegram);
     ~telegram(void);
-
     void set_size(enum t_size newsize);
-    void make_userdata_long();
-    void parse_input(const string inputstr);
-    string get_csv_output_line(const string format, bool error_only, bool calc_all, char csv_separator);
     void set_checkbits(const t_checkbits checkbits);
     void get_checkbits(longnum& checkbits) const;  
     void set_extra_shaping_bits(t_esb esb);
     t_esb get_extra_shaping_bits(void) const;
-    t_esb get_extra_shaping_bits(const longnum readfrom) const;
     void set_scrambling_bits(t_sb sb);
     t_sb get_scrambling_bits(void) const;
     void set_control_bits(t_word cb);
@@ -128,8 +135,16 @@ public:
     void set_cb_sb_esb(t_word cb_sb_esb);
 //    void set_shaped_data(const longnum sd);   // unused and untested
 //    void get_shaped_data(longnum& sd);        // unused and untested
+    t_balise_id get_balise_id(void);
+
+    // misc functions:
+    void make_userdata_long();
+    void parse_input(const string inputstr);
+    string get_csv_output_line(const string format, bool error_only, bool include_sb_esb, bool include_id, char csv_separator);
     void print_contents_fancy(int v) const;
     void align(enum t_align new_alignment);
+
+    // functions related to shaping and deshaping:
     void shape(void);
     void deshape(longnum& userdata);
     void deshape(void);
@@ -137,38 +152,28 @@ public:
     int check_shaped_deshaped(void);
     int set_next_sb_esb(void);
     bool set_next_esb(void);
-    void determine_U_tick(longnum& Utick);
+    void determine_U_tick(longnum& Utick) const;
     t_S determine_S(t_sb sb);
     t_S determine_S(void);
     int scramble_transform_check_user_data(t_S S, t_H H, const longnum& user_data_orig);
     void compute_check_bits(void);
-    int perform_candidate_checks(int v, int* err_location);
-    int transform11to10(longnum& userdata);
+    void compute_check_bitsF(void);
+    int perform_candidate_checks(int v, bool* err_in_user_data);
+    int transform11to10(longnum& userdata) const;
     void descramble(t_S S, t_H H, longnum& user_data, int m);  
     void calc_first_word(longnum& U, unsigned int m);
 
     // functions needed to perform the tests of candidate telegrams (see subset 36, 4.3.2.5):
     int check_alphabet_condition(void);
-    int check_off_synch_parsing_condition(void);
+    int check_off_synch_parsing_condition(bool *err_in_user_data);
     int calc_hamming_distance(t_word word1, t_word word2);  // part of aperiodicity condition
-    int check_aperiodicity_condition(void);
-    int get_max_run_valid_words(const longnum& ln);  
+    int check_aperiodicity_condition(bool* err_in_user_data);
+    int get_max_run_valid_words(const longnum& ln) const;  
     int check_undersampling_condition(void);
 
     // additional functions needed to perform checks of the telegram:
     int check_control_bits(void);
     int check_check_bits(void);
-
-    // old stuff:
-//    void scramble_user_data(t_S S, t_H H, const longnum& user_data_orig, longnum& user_data_scrambled, int m);
-//    void transform_word10_to_word11(const longnum& userdata);
-//    void compute_check_bits(void);
-//    t_sb set_next_sb_esb(void);
-//    int get_n_cvw(int start, int n, int max) const;
-//    int check_ospc(unsigned int i, unsigned int n_cvw = 10);
-//    void shape(void);
-
 };
-
 
 #endif

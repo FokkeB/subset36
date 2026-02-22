@@ -1,4 +1,4 @@
-/**
+﻿/**
 * This file is part of "balise_codec".
 * balise_codec is free software: you can distribute it and/or modify it under the terms of the GNU Lesser General Public License as
 * published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
@@ -10,7 +10,6 @@
 * If not, see < https://www.gnu.org/licenses/>.
 */
 
-#include "transformation_words.h"
 #include "telegram.h"
 
 telegram::telegram(const string inputstr, enum t_size newsize)
@@ -29,18 +28,6 @@ telegram::telegram(const string inputstr, enum t_size newsize)
         parse_input(inputstr);
     else
         set_size(newsize);
-}
-
-telegram::telegram(const telegram* p_telegram)
-// creates a new telegram, copies the contents from p_telegram
-// copy the input_string separately
-// Note that the order of the class variables is important in this function
-{
-    input_string = p_telegram->input_string;
-    //memcpy(&input_string+sizeof(input_string), &(p_telegram->contents), sizeof(telegram) - sizeof(input_string));
-    memcpy(&contents, &(p_telegram->contents), sizeof(telegram) - sizeof(input_string));
-
-    eprintf(VERB_FLOW, "Created telegram with address=%p\n", this);
 }
 
 telegram::~telegram(void)
@@ -176,11 +163,16 @@ void telegram::parse_input(const string inputstr)
     alignment = a_enc;
 }
 
-string telegram::get_csv_output_line(const string format, bool error_only, bool calc_all, char csv_separator)
-// returns a string with the telegram that can be used in a csv-file
+string telegram::get_csv_output_line(const string format, bool error_only, bool include_sb_esb, bool include_id, char csv_separator)
+// Returns a string with the telegram that can be used in a csv-file
+// Includes a trailing \n
+// Note that the returned string could be empty (in case the telegram has no error and only telegrams with errors should be shown)
 {
     string csv_separators = "", output_result = "", line;
     int count = 0, i;
+    t_balise_id balise_id;
+    
+    output_result.reserve(300);  // to prevent some heap reallocations
 
     if (!(error_only && (errcode == ERR_NO_ERR)))
     // skip this telegram if (only errors should be outputted and telegram has no error)
@@ -204,7 +196,7 @@ string telegram::get_csv_output_line(const string format, bool error_only, bool 
                 csv_separators.push_back(csv_separator);
 
             // add the line and the separators to the output result:
-            output_result += input_string + csv_separators + to_string(ERR_INPUT_ERROR) + "\n";
+            output_result += input_string + csv_separators + to_string(ERR_INPUT_ERROR);
         }
         else
         // output the line to a csv-format
@@ -227,15 +219,24 @@ string telegram::get_csv_output_line(const string format, bool error_only, bool 
             // add the error code and the newline:
             output_result += to_string(errcode);
 
-            // add the SB and ESB if calculating all shapings:
-            if (calc_all)
+            // add the SB and ESB if requested:
+            if (include_sb_esb)
             {
                 align(a_calc);
                 output_result += csv_separator + to_string(get_scrambling_bits()) + csv_separator +
                     to_string(get_extra_shaping_bits()) +
                     csv_separator + to_string(word9) + csv_separator + to_string(word10);
             }
+
+            if (include_id)
+            {
+                balise_id = get_balise_id();
+                output_result += csv_separator + to_string(balise_id.NID_C) + csv_separator + to_string(balise_id.NID_BG) + csv_separator + to_string(balise_id.N_PIG);
+            }
         }
+
+        // finalise the line with a newline character
+        output_result += "\n";
     }
 
     return output_result;
@@ -267,16 +268,10 @@ void telegram::set_extra_shaping_bits (t_esb esb)
     contents.write_at_location (N_CHECKBITS, &esb, N_ESB);
 }
 
-t_esb telegram::get_extra_shaping_bits (const longnum readfrom) const
-// returns the 10 "extra shaping bits" from the passed longnum (condition: enc=a_calc)
-{
-    return (t_esb)contents.get_word (N_CHECKBITS) & 0x3FF;
-}
-
 t_esb telegram::get_extra_shaping_bits(void) const
 // returns the 10 "extra shaping bits" from the telegram 
 {
-    return get_extra_shaping_bits(contents);
+    return (t_esb)contents.get_word(N_CHECKBITS) & 0x3FF;
 }
 
 void telegram::set_scrambling_bits (t_sb sb)
@@ -338,6 +333,31 @@ void telegram::get_shaped_data (longnum& sd)
 }
 */
 
+t_balise_id telegram::get_balise_id()
+// Returns the balise id (NID_C, NID_BG, N_PIG) of the current user data.
+// See subset-026 8.4.2.1, starting at bit 0, which is the high bit of the balise contents (which is bit#size-1) and counting down:
+// N_PIG is bits [8..10]
+// NID_C is bits [24..33]
+// NID_BG is bits [34..47]
+// This function requires that the unscrambled content is set, will return all zeros if this is not the case.
+{
+    t_balise_id balise_id = { 0,0,0 };
+
+    if (deshaped_contents.get_order() == 0)
+        // no user data, return all 0's
+        return balise_id;
+
+    align(a_calc);
+
+    balise_id.N_PIG = deshaped_contents.get_word(number_of_userbits - 1 - 11) & 0x7;
+    balise_id.NID_C = deshaped_contents.get_word(number_of_userbits - 1 - 34) & 0x3FF;
+    balise_id.NID_BG = deshaped_contents.get_word(number_of_userbits - 1 - 48) & 0x3FFF;
+
+    eprintf(VERB_GLOB, "Balise id = %d_%d_%d\n", balise_id.NID_C, balise_id.NID_BG, balise_id.N_PIG);
+
+    return balise_id;
+}
+
 void telegram::print_contents_fancy(int v) const
 // prints out the telegram in a fancy way (marking each part with a different color)
 // uses verbosity level v
@@ -375,7 +395,7 @@ void telegram::align(enum t_align new_alignment)
     alignment = new_alignment;
 }
 
-void telegram::determine_U_tick (longnum& Utick)
+void telegram::determine_U_tick (longnum& Utick) const
 // calculates U'(k-1) from U (=telegram contents) and writes it to U (see subset 36, paragraph 4.3.2.2, step 1)
 {
     t_word sum=0;
@@ -405,155 +425,19 @@ t_S telegram::determine_S(void)
     return determine_S (get_scrambling_bits());
 }
 
-// superseded by scramble_transform_check_user_data:
-
-/*
-void telegram::scramble_user_data(t_S S, t_H H, const longnum& user_data_orig, longnum& user_data_scrambled, int m)
-// scrambles the data in user_data_orig into user_data_scrambled (see subset 36, paragraph 4.3.2.2, step 3)
-// tbd optimisation: use a lookup table?
-{
-    int i;
-    int user_bit, t, sb;
-
-    for (i=m-1; i>=0; i--)
-    // iterate over the m user bits
-    {
-        user_bit = user_data_orig.get_bit (i);
-        t = (char)(S>>31);
-        sb = t ^ user_bit;
-        user_data_scrambled.set_bit(i, sb);
-
-        S <<= 1;
-        if (sb)
-            S ^= H;
-    }
-}
-*/
-/*
-void telegram::transform_word10_to_word11 (const longnum& userdata) 
-// performs the transformation of the scrambled user bits from 10 bits to 11 bits, 
-// write the 11-bit words into telegram at the right place
-// see subset 36, paragraph 4.3.2.3
-{
-    int i, p;
-    t_word tw;
-
-    for (i=(number_of_userbits/10)-1; i>=0; i--)
-    // iterate over the user bits, get the transformed value and store it in telegram
-    {
-        p = userdata.get_word(i*10)&0x03FF;
-        tw = (t_word)transformation_words[p];
-        contents.write_at_location(i*11 + OFFSET_SHAPED_DATA, &tw, 11);
-    }    
-}
-*/
-/*
-int telegram::get_n_cvw(int start, int n, int n_cvw_max) const
-// determines the maximum number of consecutive valid words starting at start, using wraparound
-// looks at max n words from start (if 0, checks all scrambled user bits)
-// returns with ERR_OFF_SYNCH_PARSING if more than the max nr of cvw were found or ERR_NO_ERR if not
-{
-    int max_count, i, n_cvw=0;
-    t_word temp;
-
-    max_count = (n == 0) ? number_of_shapeddata_bits : (n-1)*11;
-
-    for (i = start; i <= start + max_count; i+=11)
-    {
-        temp = contents.get_word_wraparound(size, i) & 0x7FF;
-        eprintf(VERB_GLOB, "i=%d -> ", i); print_bin(VERB_GLOB, temp, 11);
-
-        if (find11(temp) != -1)  // tbd: const
-            n_cvw++;
-        else
-            n_cvw = 0;
-
-        eprintf(VERB_GLOB, "; n_cvw=%d\n", n_cvw);
-
-        if (n_cvw > n_cvw_max)
-        {
-            eprintf(VERB_GLOB, "ERR_OFF_SYNCH_PARSING occurred\n");
-            return ERR_OFF_SYNCH_PARSING;
-        }
-    }
-
-    return ERR_NO_ERR;
-}
-*/
-/*
-int telegram::check_ospc(unsigned int i, unsigned int n_offsets, )
-// checks the "off-sync parsing condition". 
-// n_cvw: only check the first n_cvw offsets
-// i: start at bit i
-{
-    unsigned int i_offset = 0;
-    int cvw_offsets[] = { 1, 10, 9, 2 , 8, 3, 7, 4, 6, 5 };  
-    int i_last_nvw[] = { number_of_userbits / 10 - 1, number_of_userbits / 10 - 1 };   // start one word before number of userbits
-    int i_vw, max_cvw; // , n_cvw = sizeof(cvw_offsets) / sizeof(cvw_offsets[0]);
-    t_word lookatword;
-
-    if (n_offsets > 10)
-        n_offsets = 10;
-
-    for (i_offset = 0; i_offset < n_offsets; i_offset++)
-    // check the OSPC for each useful offset using a greedy algorithm
-    {
-        // determine the max allowed cvw for this case:
-        if (i_offset <= 1) // offsets 1, 10
-                max_cvw = 2;
-        else  // cases 2..9:
-            if (size == s_long)
-                max_cvw = 10;
-            else
-                max_cvw = 6;
-
-        if ((i == i_last_nvw[i_offset] - (max_cvw + 1)) && (i_last_nvw[i_offset] >= (max_cvw + 1)))
-        // Max nr of words away from last non-valid word and not yet at the end; see if there are any other non-valid words amongst them
-        // store the position of the last non-valid word in the i_last_nvw-array
-        {
-            for (i_vw = i; i_vw < i_last_nvw[i_offset]; i_vw++)
-            {
-                lookatword = contents.get_word_wraparound(size, i_vw * 11 + OFFSET_SHAPED_DATA + cvw_offsets[i_offset]) & 0x7FF;
-
-                eprintf(VERB_ALL, "bit=%d -> ", i_vw * 11 + OFFSET_SHAPED_DATA + cvw_offsets[i_offset]);
-                print_bin(VERB_ALL, lookatword, 11);
-                if (verbose >= VERB_ALL)
-                    printf(" = octal %o\n", lookatword);
-
-                if (find11(lookatword) == NO_TW)
-                // current word is no transformation word, point i_last_nvw to this word
-                {
-                    i_last_nvw[i_offset] = i_vw;
-                    break;
-                }
-            }
-
-            if (i == i_last_nvw[i_offset] - (max_cvw + 1))
-            // more than max nr of cvw's found
-            {
-                eprintf(VERB_ALL, "OSPC fail\n");
-                for (offset_index = 0; offset_index < n_offsets; i_offset++)
-                    eprintf(VERB_ALL, "Offset: %d\n", cvw_offsets[i_offset]);
-
-                return ERR_OFF_SYNCH_PARSING;
-            }
-        }
-    }
-
-    return ERR_NO_ERR;
-}
-*/
-
 int telegram::scramble_transform_check_user_data(t_S S, t_H H, const longnum& user_data_orig)   
 // scrambles the data in user_data_orig into contents (see subset 36, paragraph 4.3.2.2, step 3)
-// TBD optimisation: create a persistent (8 bits or 10 bits) lookup table for the current S. This will give an optimisation as this function may be called many times for a certain telegram.
-// If 10 bits, this can be combined with the 11-bit lookup and candidate checks.
-// see paragraph 3.1 in article of ZHUO Peng
 // checks the ERR_OFF_SYNCH_PARSING during scrambling and returns the error as soon as such an error occurred
 // Note: according to ZHUO Peng, checking the "Aperiodicity Condition for Long Format" is a very small optimisation (1%, see description @ step 4) and is therefore checked outside this function 
 {
-    int i, j;
-    int user_bit, t, sb, m_index = number_of_userbits;
+    int i;
+#ifndef USE_SCRAMBLE_LOOKUP
+    int j, user_bit, t, sb, m_index = number_of_userbits;
+#else
+    t_S lfsr = S;
+    t_word indata, index;
+#endif // USE_SCRAMBLE_LOOKUP
+
     t_word lookatword, val11;
     unsigned int val10;
 
@@ -563,16 +447,18 @@ int telegram::scramble_transform_check_user_data(t_S S, t_H H, const longnum& us
     int i_start = number_of_userbits / 10 - 1;   // start one word before the number_of_userbits
     int i_last_nvw[] = { i_start, i_start, i_start, i_start, i_start, i_start, i_start, i_start, i_start, i_start };
     int i_vw, max_cvw = 2, n_cvw = sizeof(cvw_offsets) / sizeof(cvw_offsets[0]);
-    
+
+
     for (i = i_start; i >= 0; i--)
     // outer loop running over the 10-bit words, starting with the last word
     {
-        val10 = 0;
+#ifndef USE_SCRAMBLE_LOOKUP
+        val10 = 0; //check = 0;
         for (j = 9; j >= 0; j--)
-        // inner loop, iterating over the bits in the current 10-bit word
+            // inner loop, iterating over the bits in the current 10-bit word
         {
             m_index--;  // keep track of the current bit 
-            user_bit = user_data_orig.get_bit(m_index);
+            user_bit = user_data_orig.get_bit(m_index);  
             t = (char)(S >> 31);
             sb = t ^ user_bit;
             val10 += sb << j;
@@ -581,13 +467,19 @@ int telegram::scramble_transform_check_user_data(t_S S, t_H H, const longnum& us
             if (sb)
                 S ^= H;
         }
+#else
+        indata = user_data_orig.get_word(i*10) & 0x3FF;   
+        index = indata ^ (lfsr >> 22);
+        val10 = scramble_lookup_table[index].out;
+        lfsr = scramble_lookup_table[index].reg ^ (lfsr << 10);
+#endif // USE_SCRAMBLE_LOOKUP
 
         // 10 bits calculated, find the corresponding transformation word and write it to the correct position:
         val11 = transform_word10_to_word11(val10);
 
         contents.write_at_location(i * 11 + OFFSET_SHAPED_DATA, &val11, 11);
         // print the current status:
-        eprintf(VERB_ALL, "#userbits=%d, i=%d, m_index=%d\n", number_of_userbits, i, m_index);
+        eprintf(VERB_ALL, "#userbits=%d, i=%d\n", number_of_userbits, i);
         print_contents_fancy(VERB_ALL);
 
         for (offset_index = 0; offset_index < n_cvw; offset_index++)
@@ -643,14 +535,14 @@ int telegram::scramble_transform_check_user_data(t_S S, t_H H, const longnum& us
     return ERR_NO_ERR;
 }
 
-int telegram::transform11to10 (longnum& userdata) 
+int telegram::transform11to10 (longnum& userdata) const
 // performs the transformation from 11 bits back to 10 bits; returns ERR_11_10_BIT if an error occurred (11-bit value not found in list) or ERR_NO_ERR if no errors occurred
 // reads transformed data from telegram contents (from OFFSET_SHAPED_DATA), writes the original user data to userdata starting at bit 0
 // see subset 36, paragraph 4.3.2.3
 {
     int i;                  // index
     t_word bit10, bit11;    // ints to store the temp 10-bit and 11-bits values
-
+      
     for (i=(number_of_userbits/10)-1; i>=0; i--)
     // iterate over the array of 11-bit values, get the original 10-bit value and store it in userdata
     {
@@ -706,136 +598,192 @@ void telegram::calc_first_word (longnum& U, unsigned int m)
     // calculate sum(U(k-2..0)):
     for (i=0; i<=(m/10-2); i++)
         sum += U.get_word(i*10) & 0x3FF;
-
+     
     // calculate U(k-1) and save it in U:
     temp = U.get_word(m-10) - sum;
     U.write_at_location(m-10, &temp, 10);
 }
 
-void telegram::compute_check_bits(void)
-// Compute the check bits as described in Subset 36, 4.3.2.4. Does not recalculate the first part of the telegram if the scramble bits haven't changed.
-// Input: a filled telegram (check bits already present will be overwritten)
-// Output: the checkbits in bit 0..84 of the telegram
-// Note that (as both f and g are constants), g and f*g are used, rather than calculating f*g at each run from f and g
-// Does not return an error code as this always works
-// tbd optimisation?: use lookup table 
+
+// Code below is generated by Claude and Gemini and adapted by FokkeB where needed.
+// First steps (generation of lookup table) were removed as the lookup tables are predefined in lookup_tables.h.
+
+/* ───────────────────────────────────────────────────────────────────
+ * 3.  Byte extraction helper
+ * ───────────────────────────────────────────────────────────────────
+ *
+ * Extracts an 8-bit byte from a longnum at a given bit position
+ * (the byte's LSB is at `bitpos`).  Works directly on the
+ * underlying uint32_t array to avoid per-bit function calls.
+ *
+ * Includes a bounds check to prevent reading past the end of
+ * the uint32_t[WORDS_IN_LONGNUM] array when a byte straddles
+ * the last word boundary.
+ * ─────────────────────────────────────────────────────────────────── */
+
+static inline uint8_t extract_byte(const uint32_t* words, int bitpos)
 {
-    longnum remainder, checkbits, sanitycheck, quotient; 
-    int shift, i;
-    longnum g, fg;
+    const int wi = bitpos >> 5;
+    const int bi = bitpos & 31;
+    uint32_t val = words[wi] >> bi;
+    if (bi > 24 && wi + 1 < WORDS_IN_LONGNUM)
+        val |= words[wi + 1] << (32 - bi);
+    return (uint8_t)(val & 0xFFu);
+}
 
-    // clear the lower 85 bits [0..84] from the input telegram, needed for the calculation:
-    contents[0] = 0;            // bit [0..31]
-    contents[1] = 0;            // bit [32..63]
-    contents[2] &= 0xFFE00000;  // bit [64..84]
 
-    eprintf(VERB_ALL, HEADER_COLOR "\nCalculating check bits:\n" ANSI_COLOR_RESET);
-    eprintf(VERB_ALL, FIELD_COLOR "Input telegram:\t" ANSI_COLOR_RESET); print_contents_fancy(VERB_ALL);
+/* ───────────────────────────────────────────────────────────────────
+ * 4.  Table-driven CRC division
+ * ───────────────────────────────────────────────────────────────────
+ *
+ * Processes `n_bytes` consecutive 8-bit chunks from the telegram,
+ * starting at `base_bitpos` and working from the highest byte
+ * downward.  The byte grid is:
+ *
+ *   byte 0:            bits [base_bitpos .. base_bitpos+7]
+ *   byte 1:            bits [base_bitpos+8 .. base_bitpos+15]
+ *   ...
+ *   byte n_bytes-1:    bits [base_bitpos+(n_bytes-1)*8 .. ...]
+ *
+ * Bytes are processed from byte (n_bytes-1) down to byte 0 so that
+ * the most-significant message bits enter the CRC first.
+ *
+ * CRITICAL: Two consecutive calls that together cover a range must
+ * share the same base_bitpos (byte grid origin) to avoid overlapping
+ * or skipping bits.
+ * ─────────────────────────────────────────────────────────────────── */
 
-    // determine the inputs to the calculation (kept here instead of moving them to ss36.h):
+static void crc_table_divide_bytes(
+    const uint32_t* words,
+    int base_bitpos,
+    int n_bytes,
+    const t_crc_entry table[256],
+    uint32_t r[3])
+{
+    for (int i = n_bytes - 1; i >= 0; i--)
+    {
+        const int bp = base_bitpos + i * 8;
+        const uint8_t msg_byte = extract_byte(words, bp);
+
+        const uint8_t idx = ((uint8_t)(r[2] >> 13)) ^ msg_byte;
+
+        r[2] = ((r[2] << 8) | (r[1] >> 24)) & 0x001FFFFFu;
+        r[1] = (r[1] << 8) | (r[0] >> 24);
+        r[0] = (r[0] << 8);
+
+        r[0] ^= table[idx].w[0];
+        r[1] ^= table[idx].w[1];
+        r[2] ^= table[idx].w[2];
+    }
+}
+
+/* ───────────────────────────────────────────────────────────────────
+ * 5.  Replacement for compute_check_bits()
+ * ───────────────────────────────────────────────────────────────────
+ *
+ * Cache strategy
+ * ──────────────
+ * The byte grid is anchored at N_CHECKBITS (bit 85), giving bytes:
+ *   byte 0: bits [85..92]     ← check-bit overflow + ESB
+ *   byte 1: bits [93..100]    ← ESB + SB overlap
+ *   byte 2: bits [101..108]   ← SB + CB + shaped data
+ *   ...
+ *
+ * The ESB occupies bits 85..94, spanning bytes 0 and 1.  The first
+ * byte that is entirely ABOVE the ESB is byte 2 (bit 101).
+ *
+ * We split the division at byte 2:
+ *   Phase 1 (cached):  bytes 2 .. (n_bytes-1)   → shaped data + SB + CB
+ *   Phase 2 (always):  bytes 0 .. 1             → ESB region
+ *
+ * Both phases use the SAME byte grid (anchored at bit 85) so there
+ * is no overlap or gap between them.
+ *
+ * The cache is valid when the scrambling bits (and therefore the
+ * shaped user data above them) haven't changed.  On a cache hit
+ * only Phase 2 runs (2 table lookups).
+ *
+ * Cache sentinel
+ * ──────────────
+ * intermediate_sb is initialised to 0 in the class, which is a
+ * valid 12-bit SB value.  To prevent false cache hits on a fresh
+ * telegram, we store (SB + 1) as the cache key.  This shifts the
+ * valid key range to 1..4096, so the default 0 never matches.
+ * ─────────────────────────────────────────────────────────────────── */
+ 
+void telegram::compute_check_bits(void)
+{
+    int phase1_bytes = (number_of_shapeddata_bits + N_CB + N_SB) / 8;       // Total bytes in the message (above the check-bit region) 
+    int phase2_bytes = (N_ESB+N_SB)/8;     // Number of bytes in Phase 2: bytes 0 and 1 (bits 85..100).
+    uint32_t r[3] = { 0, 0, 0 };
+    longnum g;
+    const t_crc_entry* table;
+
+    // --- Zero the check-bit region (bits 0..84) ---
+    contents[0] = 0;
+    contents[1] = 0;
+    contents[2] &= 0xFFE00000u;
+
+    eprintf(VERB_ALL, HEADER_COLOR "\nCalculating check bits (table):\n" ANSI_COLOR_RESET);
+    eprintf(VERB_ALL, FIELD_COLOR "Input telegram:\t" ANSI_COLOR_RESET);
+    print_contents_fancy(VERB_ALL);
+
+    // --- Select polynomial g and lookup table ---
     if (size == s_long)
     {
-        // polynomials for a long telegram:
-//        f[0] = 0b11011011111;  // not used, using fg instead
-
         g[0] = 0b11010101001000111011101000010011;
         g[1] = 0b01110011100110100111101000101110;
         g[2] = 0b101110001000;
-
-        // calculated f*g: 0x003EC171 890C6F72 C063B091
-        fg[0] = 0xC063B091;
-        fg[1] = 0x890C6F72;
-        fg[2] = 0x003EC171;
+        table = crc_table_long;
     }
     else
     {
-        // polynomials for a short telegram:
-//        f[0] = 0b10110101011;  // not used, using fg instead
-
         g[0] = 0b11001010010010100011110001001011;
         g[1] = 0b10010000110000101111111011110111;
         g[2] = 0b100111110111;
-
-        // calculated f*g: 0x002BB94D 87757959 021B6D65, with order 86
-        fg[0] = 0x021B6D65;
-        fg[1] = 0x87757959;
-        fg[2] = 0x002BB94D;
+        table = crc_table_short;
     }
 
-    // See if the previously calculated intermediate can be used
-    if (get_scrambling_bits() == intermediate_sb)  
-    // already calculated the remainder up to the ESB. Copy the intermediate result, set the right ESB's and continue the calculation
+    // --- Phase 1: bytes 2..(n-1), cached by scrambling bits ---
+    // Use SB + 1 for comparison: intermediate_sb stores (SB + 1) so
+    // that the default-initialized value of 0 never matches a real
+    // SB (whose (SB + 1) ranges from 1 to 4096).
+
+    const t_word current_sb_key = get_scrambling_bits() + 1;
+
+    if (current_sb_key == intermediate_sb)
     {
-        remainder = intermediate_remainder;
-        quotient = intermediate_quotient;
-        remainder.write_at_location(N_CHECKBITS, get_extra_shaping_bits(), N_ESB);
-        eprintf(VERB_ALL, "Reused intermediate calculation for ESB=%d.\n", intermediate_sb); 
+        r[0] = intermediate_remainder[0];
+        r[1] = intermediate_remainder[1];
+        r[2] = intermediate_remainder[2];// &0x001FFFFFu;
+        eprintf(VERB_ALL, "Reused table cache for SB key=%d.\n", intermediate_sb);
     }
     else
-    // No previous calculation for the current SB; copy telegram contents into remainder
-        remainder = contents;
-
-    // Perform the calculation (GF2 division, note that only the remainder is relevant, but the quotient is stored as well to be able to perform a sanity check)
-    for (i = remainder.get_order(); i >= FG_ORDER; i--)
     {
-        shift = i - FG_ORDER;
-        if (remainder.get_bit(i - 1))
-        {
-            remainder ^= fg << shift;
-            quotient.set_bit(shift, 1);
-        }
+        crc_table_divide_bytes(&contents[0],
+            N_CHECKBITS + phase2_bytes * 8,
+            phase1_bytes,
+            table, r);
 
-        if (i == N_CHECKBITS + N_ESB + FG_ORDER)
-        // calculated everything up to the Extra Shaping Bits, store the intermediate result
-        {
-            intermediate_remainder = remainder;
-            intermediate_quotient = quotient;
-            intermediate_sb = get_scrambling_bits();
-            eprintf(VERB_ALL, "Stored intermediate calculation for ESB=%d: \n",intermediate_sb); intermediate_remainder.print_bin(VERB_ALL);
-        }
+        intermediate_remainder[0] = r[0];
+        intermediate_remainder[1] = r[1];
+        intermediate_remainder[2] = r[2] & 0x001FFFFFu;
+        intermediate_sb = current_sb_key;
+        eprintf(VERB_ALL, "Stored table cache for SB key=%d.\n", intermediate_sb);
     }
 
-    // add (=xor) g to the remainder -> checkbits!:
-    checkbits = remainder + g;
+    // --- Phase 2: bytes 0..1 (bits 85..100), always computed ---
+    crc_table_divide_bytes(&contents[0], N_CHECKBITS, phase2_bytes, table, r);
 
+    // XOR with g and put into telegram:
+    contents[0]  = r[0] ^ g[0];
+    contents[1]  = r[1] ^ g[1];
+    contents[2] |= r[2] ^ g[2];
 
-    // perform a sanity check by calculating the original bits from the quotient, remainder and g
-    // this is just to be sure that the calculation went ok
-
-    // subtract g from the checkbits to get the remainder (note: this is a xor-operation, just like addition)
-    sanitycheck = checkbits - g;
-
-    // sanitycheck should now be identical to the remainder, show an error message and exit if this is not the case:
-    if (sanitycheck != remainder)
-    {
-        eprintf(VERB_QUIET, ERROR_COLOR "ERROR" ANSI_COLOR_RESET" - sanity check of remainder is NOK, exiting...\n");
-        exit(ERR_LOGICAL_ERROR);
-    }
-
-    // multiply the quotient with fg, store in sanitycheck:
-    sanitycheck = quotient * fg;
-
-    // and add the remainder:
-    sanitycheck += remainder;
-
-    // see if the check is OK (should always be the case):
-    if (sanitycheck != contents)
-    {
-        eprintf(VERB_QUIET, ERROR_COLOR "ERROR" ANSI_COLOR_RESET" - check bits sanity check is NOK, exiting...\n");
-        eprintf(VERB_QUIET, "sanitycheck:\n");
-        sanitycheck.print_bin(VERB_QUIET);
-        eprintf(VERB_QUIET, "contents:\n");
-        contents.print_bin(VERB_QUIET);
-        exit(ERR_LOGICAL_ERROR);
-    }
-    else
-        eprintf(VERB_ALL, OK_COLOR "Sanity check of check bits is OK\n" ANSI_COLOR_RESET);
-
-    // no problem found in the sanity check; save the checkbits
-    contents[0] = checkbits[0];    // bits 0..31
-    contents[1] = checkbits[1];    // bits 32..63
-    contents[2] |= checkbits[2];   // set bits 64..84
+    eprintf(VERB_ALL, OK_COLOR "Check bits computed (table).\n" ANSI_COLOR_RESET);
 }
+
+// end AI code
 
 
 int telegram::set_next_sb_esb(void)
@@ -890,7 +838,9 @@ int telegram::set_next_sb_esb(void)
     set_cb_sb_esb(cb_sb_esb); // write the cb+esb+sb to the telegram, reset the three lower ESB-bits
 
     eprintf(VERB_ALL, "Set_next_sb_esb: Updated CB, SB and ESB to: word10=%d; tw10=o%o; word9=%d; tw9=o%o; \n", word10, transform_word10_to_word11(word10), word9, transform_word10_to_word11(word9));
-     
+    
+    //printf("S: SB=%d; ESB=%d\n", get_scrambling_bits(), get_extra_shaping_bits());
+ 
     return ERR_NO_ERR; 
 }
 
@@ -920,6 +870,7 @@ bool telegram::set_next_esb(void)
 
     eprintf(VERB_ALL, "set_next_esb: Updated CB, SB and ESB to:\n"); print_contents_fancy(VERB_ALL);
     eprintf(VERB_ALL, "word10=%d; tw10=o%o; word9=%d; tw9=o%o; \n", word10, transform_word10_to_word11(word10), word9, transform_word10_to_word11(word9));
+    //printf("E: SB=%d; ESB=%d\n", get_scrambling_bits(), get_extra_shaping_bits());
 
     return true;
 }
@@ -939,6 +890,7 @@ void telegram::shape(void)
     Utick = deshaped_contents;
     determine_U_tick(Utick);
     eprintf(VERB_ALL, "\nU'=\n"); Utick.print_bin(VERB_ALL);
+    bool err_in_user_data;
 
     do
     // repeat until we find a correct telegram or there is an overflow of sb/esb
@@ -972,10 +924,10 @@ void telegram::shape(void)
             print_contents_fancy(VERB_ALL);
 
             // now see if the packet is "well formed", make another run if not.
-            err = perform_candidate_checks(VERB_ALL, &err_location);
+            err = perform_candidate_checks(VERB_ALL, &err_in_user_data);
 
             if ((err == ERR_OFF_SYNCH_PARSING) || (err == ERR_APERIODICITY))
-                if (err_location >= OFFSET_SHAPED_DATA)
+                if (err_in_user_data)
                 // error sequence is located completely in the shaped user data, it is therefore pointless to update the ESB
                 // solution: set last three bits of ESB to 111, so the next word 9 and if necessary word10 are selected in the next run
                 { 
@@ -1015,43 +967,45 @@ void telegram::deshape()
     deshape(deshaped_contents);
 }
 
-int telegram::perform_candidate_checks(int v, int* err_location)
+int telegram::perform_candidate_checks(int v, bool* err_in_user_data) // int* err_location)
 // Performs all the checks in subset 36, paragraph 4.3.2.5 "Testing Candidate Telegrams".
 // Returns one of the subset 36 error codes, or 0 if all OK, stops checking after occurence of the first error.
-// Sets err_location to point to the start bit of the error (if this makes sense).
+// Sets err_in_user_data if the error is located within the user data area.
 // Perform the checks in the optimal order, see elimination rates in ZHUO Pengs article, Step 7.
 // Always check the complete telegram. This leads to some redundant checks (the alphabet condition and the off-synch parsing check
 // are partially performed during the calculations), but it seems like a good idea to check everything once the calculations are done.
 {
-    *err_location = check_alphabet_condition();
-    if (*err_location != MAGIC_WORD)
+    int err_location;
+
+    err_location = check_alphabet_condition();
+    if (err_location != MAGIC_WORD)
     {
-        eprintf(v, ERROR_COLOR "check_alphabet_condition fails" ANSI_COLOR_RESET " at word starting with bit#%d.\n", *err_location);
+        eprintf(v, ERROR_COLOR "check_alphabet_condition fails" ANSI_COLOR_RESET " at word starting with bit#%d.\n", err_location);
         return ERR_ALPHABET;
     }
     else
         eprintf(v, "Check alphabet condition:\t\t\t" OK_COLOR "OK\n" ANSI_COLOR_RESET);
 
-    *err_location = check_off_synch_parsing_condition();
-    if (*err_location != MAGIC_WORD)
+    err_location = check_off_synch_parsing_condition(err_in_user_data);
+    if (err_location != MAGIC_WORD)
     {
-        eprintf(v, ERROR_COLOR "check_off_synch_parsing_condition fails" ANSI_COLOR_RESET " at bit# %d.\n", *err_location);
+        eprintf(v, ERROR_COLOR "check_off_synch_parsing_condition fails" ANSI_COLOR_RESET " at bit# %d.\n", err_location);
         return ERR_OFF_SYNCH_PARSING;
     }
     else
         eprintf(v, "Check off-sync-parsing condition:\t\t" OK_COLOR "OK\n" ANSI_COLOR_RESET);
 
-    *err_location = check_aperiodicity_condition();
-    if (*err_location != MAGIC_WORD)
+    err_location = check_aperiodicity_condition(err_in_user_data);
+    if (err_location != MAGIC_WORD)
     {
-        eprintf(v, ERROR_COLOR "check_aperiodicity_condition fails" ANSI_COLOR_RESET " at bit# %d.\n", *err_location);
+        eprintf(v, ERROR_COLOR "check_aperiodicity_condition fails" ANSI_COLOR_RESET " at bit# %d.\n", err_location);
         return ERR_APERIODICITY;
     }
     else
         eprintf(v, "Check aperiodicity condition for long format:\t" OK_COLOR "OK\n" ANSI_COLOR_RESET);
 
-    *err_location = check_undersampling_condition();
-    if (*err_location)
+    err_location = check_undersampling_condition();
+    if (err_location)
     {
         eprintf(v, ERROR_COLOR "check_undersampling_condition fails" ANSI_COLOR_RESET".\n");
         return ERR_UNDER_SAMPLING;
@@ -1086,9 +1040,10 @@ int telegram::check_alphabet_condition()
     return MAGIC_WORD;
 }
 
-int telegram::check_off_synch_parsing_condition ()
+int telegram::check_off_synch_parsing_condition (bool *err_in_user_data)
 /** checks the off_synch_parsing_condition in the test data (see subset 36, 4.3.2.5.3) for the given telegram
  * returns the bit number of the start of the sequence of "consecutive valid words" (cvw) that triggers a fail, or the MAGIC_WORD if all OK 
+ * if the error is completely located in the user data area, err_in_user_data is set to true
  * 
  * The following situations can occur:
  *  0) i = 0, 11, 22, ... : multiple of 11 (-> no action, is already checked in the alphabet condition check)
@@ -1174,6 +1129,10 @@ int telegram::check_off_synch_parsing_condition ()
                     };
                     contents.print_fancy(VERB_ALL, 11, size, error_markings);
 
+                    *err_in_user_data = ( (min_i >= OFFSET_SHAPED_DATA) &&         // the lower part of the error is in the user data area
+                                          (min_i + 11 * (max_cvw + 1) < size)      // and the higher part of the error as well
+                                        ); 
+
                     errcode = ERR_OFF_SYNCH_PARSING;
                     return min_i;
                 }
@@ -1216,7 +1175,7 @@ int telegram::calc_hamming_distance(t_word word1, t_word word2)
     return hamming_distance;
 }
 
-int telegram::check_aperiodicity_condition ()
+int telegram::check_aperiodicity_condition (bool *err_in_user_data)
 /** checks the "Aperiodicity Condition for Long Format" from subset 36, 4.3.2.5.4
  * 
  * this check is only valid for the long telegram, so short telegrams are skipped.
@@ -1227,6 +1186,7 @@ int telegram::check_aperiodicity_condition ()
  * if the position of the lower two words is < 0, wraparound to the top of the telegram (see remark about wrap-around in subset 36, 4.3.2.5.1).
  * 
  * returns the location of the lower word at which the error occurs or returns the MAGIC_WORD if no error or if the telegram was short (-> no check).
+ * sets err_in_user_data to true if the error is located completely in the user data area, false if not.
  */
 {
     int i, word_high, word_low, hammingdistance, err_start=MAGIC_WORD;
@@ -1273,6 +1233,10 @@ int telegram::check_aperiodicity_condition ()
                     // error was found, return the location of the lower word:
                 {
                     errcode = ERR_APERIODICITY;
+
+                    *err_in_user_data = ( (err_start >= OFFSET_SHAPED_DATA) &&   // the lower part of the error is in the user data area
+                                          (i + 21 < size)                        // the higher part as well
+                                        );
                     return err_start;
                 }
             }    
@@ -1282,7 +1246,7 @@ int telegram::check_aperiodicity_condition ()
     return MAGIC_WORD;    // short telegram or no errors
 }
 
-int telegram::get_max_run_valid_words(const longnum& ln)
+int telegram::get_max_run_valid_words(const longnum& ln) const
 /** Returns the maximum number of valid consecutive 11-bit words in telegram of length telegram->size (=n).
  * Starts at offsets i=[0..10] and for each offset, continues until n+30*11 bits have been checked.
  * Wraps around at n.
@@ -1314,10 +1278,10 @@ int telegram::get_max_run_valid_words(const longnum& ln)
             else
                 n_cvw = 0;    // reset the counter
 
-                eprintf(VERB_ALL, "  i=%04d; word=", i + offset); print_bin(VERB_ALL, temp, 11); eprintf(VERB_ALL, ANSI_COLOR_RESET);
+            eprintf(VERB_ALL, "  i=%04d; word=", i + offset); print_bin(VERB_ALL, temp, 11); eprintf(VERB_ALL, ANSI_COLOR_RESET);
 
-                if (i % 4 == 0)
-                    eprintf(VERB_ALL, "\n");
+            if (i % 4 == 0)
+                eprintf(VERB_ALL, "\n");
         }
     }
 
@@ -1429,6 +1393,7 @@ int telegram::check_shaped_telegram()
 // returns 0 if no error, an appropriate error code if NOK
 {
     int err;
+    bool err_in_user_data = false;
 
     align(a_calc);
 
@@ -1453,7 +1418,7 @@ int telegram::check_shaped_telegram()
         eprintf(VERB_GLOB, "Check check bits:\t\t\t\t" OK_COLOR "OK\n" ANSI_COLOR_RESET);
 
     // finally, perform the candidate-telegram tests:
-    return perform_candidate_checks(VERB_GLOB, &err);
+    return perform_candidate_checks(VERB_GLOB, &err_in_user_data);
 }
 
 int telegram::check_shaped_deshaped()

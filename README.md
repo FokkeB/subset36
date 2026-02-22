@@ -1,14 +1,14 @@
 ## ETCS Subset 36 balise encoding and decoding ("balise_codec")
 
 Encode and decode Eurobalise contents as described in ETCS subset 36 (FFFIS for Eurobalise, v4.0.0, 05/07/2023)
-By Fokke Bronsema, fokke@bronsema.net, version 9, January 25th, 2026, released under the GNU Lesser General Public License.
+By Fokke Bronsema, fokke@bronsema.net, version 10 of February 22nd, 2026, released under the GNU Lesser General Public License.
 
-### Changes since version 8: 
-- Added support for Linux (x86, ARM);
-- Uses BS::threadpool (see https://github.com/bshoshany/thread-pool);
-- Improved python module (thanks @ https://github.com/Pierretsc);
-- Added automatic tests via ctest;
-- Many other small changes and bugfixes.
+### Changes in this version: 
+- Implemented checksum calculation with a lookup-table (50% speedup!), several small bugfixes and optimisations (thanks @Guy and his AI tools);
+- Fixed issue#9 in which not all possible ESB values were explored (thanks @stefanodifrancesco);
+- Added option '-I', to include balise identification in the output (NID_C, NID_BG and N_PIG);
+- Removed empty lines from output when using "-E" option;
+- Added BOM UTF-8 support and a decent error code when unsupported encoding was used in the input;
  
 ### Disclaimer 
 Use this software at your own risk, the author is not responsible for incorrect en-/decoded messages leading to train related mayhem. Even though this software was tested against a few thousand Dutch Eurobalises from different manufacturers, errors may still occur.
@@ -31,16 +31,17 @@ This repository contains the following software:
 This folder contains main.cpp which uses the ss36-library to create an executable.
 Usage: compile main.cpp and its required dependencies. This yields a command line executable (compiled version for different platforms are included in the folder) with the following command line parameters:
 
+- -a, --calc_all: calculate all valid combinations of scrambling bits (SB) and extra shaping bits (ESB) for each telegram in the input. The output will contain the SB and ESB in two extra columns, as well as the 9th and 10th 11-bit word of each telegram. 
+- -e, --show_error_codes: shows the meaning of the error codes that can be generated when checking / shaping telegrams.
+- -E, --error_only: output only the telegrams in which an error was found (-e gives the error codes).
+- -f, --format_output: output format for the shaped telegram: 'hex' or 'base64' (default).
 - -i, --input_filename: read lines with data from the indicated file (UTF-8, no BOM) and convert its contents from shaped data to unshaped data and vice versa. This tool automatically determines the used format (base64/hex) and length (short/long). Lines must be separated by '\n' ('\r' will be ignored). If both the shaped and unshaped data are given on one line (separated by a semicolon), the program will check the correct shaping. Comments must be preceded by '#'.
+- -I, --id: Include the id numbers of the balise in the output.
+- -l, --force_long: force shaping to the long format (1023 bits), even if the unshaped data is of short format (341 bits). If not specified, this tool will use the same format as the input data.
+- -m, --max_cpu: max nr of cpu's to use. Multithreading is enabled by default for verbosity <= 1 or if set to 0.
 - -o, --output_filename: write output to this file.
 - -s, --string: input string literal (shaped and/or deshaped string in base64/hex), format identical to one line in the input file.
 - -v, --verbose: level of verbosity: 0 (quiet, only show result), 1 (+show progress, default), 2 (+basic output) or 3 (+lots of output).
-- -m, --max_cpu: max nr of cpu's to use. Multithreading is enabled by default for verbosity <= 1 or if set to 0.
-- -l, --force_long: force shaping to the long format (1023 bits), even if the unshaped data is of short format (341 bits). If not specified, this tool will use the same format as the input data.
-- -f, --format_output: output format for the shaped telegram: 'hex' or 'base64' (default).
-- -e, --show_error_codes: shows the meaning of the error codes that can be generated when checking / shaping telegrams.
-- -E, --error_only: output only the telegrams in which an error was found (-e gives the error codes).
-- -a, --calc_all: calculate all valid combinations of scrambling bits (SB) and extra shaping bits (ESB) for each telegram in the input. The output will contain the SB and ESB in two extra columns, as well as the 9th and 10th 11-bit word of each telegram. 
 
 For example: 
 

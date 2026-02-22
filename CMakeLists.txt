@@ -15,6 +15,12 @@ message ("CMAKE_SYSTEM_NAME=" ${CMAKE_SYSTEM_NAME})
 message ("CMAKE_SYSTEM=" ${CMAKE_SYSTEM})
 message ("CMAKE_CURRENT_SOURCE_DIR=" ${CMAKE_CURRENT_SOURCE_DIR})
 
+# enable "edit and continue":
+if(MSVC)
+    add_compile_options("/ZI")
+    add_link_options("/INCREMENTAL")
+endif()
+
 enable_testing()
 
 # set /MT instead of /MD:

@@ -15,7 +15,7 @@ target_sources(ss36
         longnum.cpp
         parse_input.cpp
         telegram.cpp
-        transformation_words.cpp
+        "lookup_tables.cpp"
         useful_functions.cpp
 
     PUBLIC
@@ -29,7 +29,7 @@ target_sources(ss36
             longnum.h
             parse_input.h
             telegram.h
-            transformation_words.h
+            "lookup_tables.h"
             useful_functions.h
             errcodes.h
-)
+ "temp.c")

@@ -41,19 +41,15 @@ typedef uint32_t t_word;                          // type of word
 typedef t_word t_longnum[WORDS_IN_LONGNUM];       // type of longnum. Note: sizeof (t_longnum) = sizeof(t_word)*WORDS_IN_LONGNUM
 
 // define the parameters of the longnum:
-const int BITS_IN_WORD = sizeof(t_word) * 8;                        // nr of bits in one t_word
+const int BITS_IN_WORD = sizeof(t_word) * 8;                          // nr of bits in one t_word
 const int BITS_IN_LONGNUM = sizeof(t_word) * 8 * WORDS_IN_LONGNUM;    // nr of bits in one t_longnum
 
 #define FILL_RANDOM -1
 
-// external variables, to be defined @ compile time:
-extern const int BITS_IN_WORD;        // nr of bits in one word. 
-extern const int BITS_IN_LONGNUM;     // total nr of bits in the longnum: BITS_IN_WORD * WORDS_IN_LONGNUM
-
 class longnum {
 
 private:
-	t_longnum value;  // the actual values of the longnum
+	t_longnum value = { 0 };  // the actual values of the longnum, initialised to 0
 
 public:
 	longnum(int with = 0);   // constructor, default set to 0
@@ -71,10 +67,10 @@ public:
 	t_word get_word_wraparound(int size, int bitnum) const;
 	int get_bit(int bitnum) const;
 	void set_bit(int bitnum, int value);  
-	bool operator == (const longnum ln2);
-	bool operator != (const longnum ln2);
-	void write_at_location(unsigned int location, const t_word* newvalue, int n_bits);		// write an array of t_words   
-	void write_at_location(unsigned int location, const t_word newvalue, int n_bits);		// write one t_word
+	bool operator == (const longnum& ln2) const;
+	bool operator != (const longnum& ln2) const;
+	void write_at_location(const unsigned int location, const t_word* newvalue, int n_bits);		// write an array of t_words   
+	void write_at_location(const unsigned int location, const t_word newvalue, int n_bits);		// write one t_word
 	int get_order(void) const;
 	void read_from_array(uint8_t* arr, int n);
 	void write_to_array(uint8_t* arr, int n) const;
@@ -82,7 +78,7 @@ public:
 	void print_hex(int v, int n) const;
 	int sprint_hex(string& line, int n) const;
 	int sprint_base64(string& line, int n) const;
-	void print_fancy(int verbosity, int wordlength, int size, t_longnum_layout* longnum_layout) const;
+	void print_fancy(int verbosity, int wordlength, int size, const t_longnum_layout* longnum_layout) const;
 	void rotate(int size, int count);
 
 //	Binary Galois Field operations:

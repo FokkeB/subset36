@@ -14,7 +14,7 @@
 #define BALISE_CODEC_H
 
 
-constexpr const char* VER_FILEVERSION_STR = "9 (January 25th, 2026)";
+constexpr const char* VER_FILEVERSION_STR = "10 (February 22nd, 2026)";
 
 
 constexpr int MAX_ACTIVE_THREADS = 100;                 // max amount of threads to spawn. Array size of list of thread handles.
@@ -30,14 +30,13 @@ constexpr int PROGRESS_UPDATE_PERIOD = 250;             // update the progress i
 #include <fstream>              // to read in an external file
 #include <errno.h>              // for errno
 #include <string.h>             // for strerror
-#include <future>
-#include "BS_thread_pool.hpp"
+#include "BS_thread_pool.hpp"   // external lib implementing a thread pool
 
 string read_from_file(string filename);
 void convert_telegram(telegram* p_telegram);
 void telegram_calc_all(telegram* p_start_telegram);
 void convert_telegrams_multithreaded(telegram* telegrams, unsigned int max_cpu, bool calc_all);
-string output_telegrams_to_string(telegram *telegramlist, const string format, bool error_only, bool include_header, bool calc_all);
+string output_telegrams_to_string(telegram *telegramlist, const string format, bool error_only, bool include_header, bool calc_all, bool show_id);
 void output_telegrams_to_file(const string& output_string, const string filename);
 int get_first_error_code(telegram *telegramlist);
 

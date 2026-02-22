@@ -58,7 +58,7 @@ int parse_line(const char* input_line,
         temp_telegram = p_telegram;
         while (temp_telegram)
         {
-            string line2 = temp_telegram->get_csv_output_line("base64", false, calc_all, ';');
+            string line2 = temp_telegram->get_csv_output_line("base64", false, calc_all, false, ';');
             printf ("Telegram#%03d:%s\n", i, line2.c_str());
             temp_telegram = temp_telegram->next;
             i++;

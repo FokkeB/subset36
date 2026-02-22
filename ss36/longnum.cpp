@@ -228,8 +228,12 @@ t_word longnum::get_word_wraparound(const int size, const int bitnum) const
     if (size)
         n = (bitnum % size + size) % size;  // n is new bitnum, guaranteed to lie within the boundaries of size. Use of weird modulo to deal with negative bitnums. 
 
+    if (n + BITS_IN_WORD <= size)
+    // Common case: no wraparound needed
+        return get_word(n);
+
     for (i = n + BITS_IN_WORD - 1; i >= n; i--)
-        // iterate over the bits and determine the right bit to fetch
+    // iterate over the bits and determine the right bit to fetch
     {
         retval <<= 1;    
 
@@ -274,41 +278,69 @@ void longnum::set_bit(const int bitnum, const int newvalue)
         value[word_index] &= ~t;
 }
 
-bool longnum::operator == (const longnum ln2)
+bool longnum::operator == (const longnum& ln2) const
 // returns true if contents of ln1 and ln2 are the same, false otherwise, == operator overload
 {
     return (memcmp(value, ln2.value, sizeof(t_longnum)) == 0);
 }
 
-bool longnum::operator != (const longnum ln2)
+bool longnum::operator != (const longnum& ln2) const
 // returns true if contents of ln1 and ln2 differ, false if they are equal, != operator overload
 {
     return !(*this == ln2); 
 }
 
-void longnum::write_at_location(unsigned int location, const t_word* newvalue, int n_bits)
+void longnum::write_at_location(const unsigned int location, const t_word* newvalue, int n_bits)
 // writes the first n bits of newvalue (array of t_word) to longnum @ bitposition location [0..N-1]
 // stops when the last bit of longnum is reached
 {
-    if (location >= BITS_IN_LONGNUM) 
-    // location outside of longnum; don't do anything
+    int i;
+    t_word n_word, read_bit, write_bit;
+
+    // do some range checking:
+
+    if (location >= BITS_IN_LONGNUM)
+        // location outside of longnum; don't do anything
         return;
 
     if (location + n_bits >= BITS_IN_LONGNUM)
-    // shorten n_bits to stay within longword
+        // shorten n_bits to stay within longword
         n_bits = BITS_IN_LONGNUM - location;
 
-    for (int i = 0; i < n_bits; i++)
-    // iterate over newvalues, put them in the right place
-    {
-        int n_word = i / BITS_IN_WORD;
-        int n_bit = i % BITS_IN_WORD;
+    n_word = location / BITS_IN_WORD;
+    write_bit = 1 << (location % BITS_IN_WORD);
+    read_bit = 1;
 
-        set_bit(location + i, (newvalue[n_word] >> n_bit) & 1);
+    for (i = 0; i < n_bits; i++)
+        // iterate over newvalues, put them in the right place
+    {
+        if (*newvalue & read_bit)
+            value[n_word] |= write_bit;
+        else
+            value[n_word] &= ~write_bit;
+
+        read_bit <<= 1;
+        write_bit <<= 1;
+        if (write_bit == 0)
+            // n_bit overflowed, go to the next word
+        {
+            n_word++;
+            write_bit = 1;
+        }
     }
+    /*
+        for (i = 0; i < n_bits; i++)
+        // iterate over newvalues, put them in the right place
+        {
+            n_word = i / BITS_IN_WORD;
+            int n_bit = i % BITS_IN_WORD;
+
+            set_bit(location + i, (newvalue[n_word] >> n_bit) & 1);
+        }
+    */
 }
 
-void longnum::write_at_location(unsigned int location, const t_word newvalue, int n_bits)
+void longnum::write_at_location(const unsigned int location, const t_word newvalue, int n_bits)
 // writes the first n_bits of newvalue to the longnum
 {
     write_at_location(location, &newvalue, n_bits);
@@ -321,7 +353,7 @@ int longnum::get_order(void) const
     int i;
 
     // coming from the MSB, find the first word that is > 0:
-    while ((value[wordnum] == 0) && (wordnum >= 0))
+    while ((wordnum >= 0) && (value[wordnum] == 0))
         wordnum--;
 
     if (wordnum >= 0)
@@ -342,16 +374,17 @@ int longnum::get_order(void) const
     return -1;
 }
 
-void longnum::read_from_array(uint8_t* arr, int n)
+void longnum::read_from_array(uint8_t* arr, int n) 
 // converts the first n bytes [0..n] in the char array arr to a longnum ln (setting bits [n*8-1 .. 0] )
 {
-    int j;
-    t_word newbyte;
+    int j, bit_pos, dst_word, dst_bit;
 
-    for (j = n - 1; j >= 0; j--)
-    {
-        newbyte = (t_word)arr[j] & 0xFF;
-        write_at_location((n - j - 1) * 8, &newbyte, 8);
+    fill(0);
+    for (j = 0; j < n; j++) {
+        bit_pos = (n - j - 1) * 8;
+        dst_word = bit_pos / BITS_IN_WORD;
+        dst_bit = bit_pos % BITS_IN_WORD;
+        value[dst_word] |= ((t_word)arr[j]) << dst_bit;
     }
 }
 
@@ -413,11 +446,11 @@ int longnum::sprint_hex(string& line, int n) const
     char temp[3];
 
     line = "";
+    line.reserve((size_t)(n/4+1));
 
     for (j = (n - 1) / 8; j >= 0; j--)
     {
         w = get_word(j * 8);
-        //sprintf_s(temp, 3, "%02X", w & 0xFF);
         snprintf(temp, sizeof(temp), "%02X", w & 0xFF);
         line += temp;
     }
@@ -437,7 +470,7 @@ int longnum::sprint_base64(string& line, int n) const
     return (int)line.length();
 }
 
-void longnum::print_fancy(int v, int wordlength, int size, t_longnum_layout* longnum_layout) const
+void longnum::print_fancy(int v, int wordlength, int size, const t_longnum_layout* layout) const
 /**
  * prints the longnum binary, in a structured way, with colors! 8-o
  *
@@ -453,16 +486,19 @@ void longnum::print_fancy(int v, int wordlength, int size, t_longnum_layout* lon
     int i, layout_count, layout_index;
     char clear_color[] = ANSI_COLOR_RESET;
     char* current_color = clear_color;
+    t_longnum_layout longnum_layout[sizeof(layout)] = {};
 
     return_if_silent(v);
 
-    if (longnum_layout == NULL)
+    if (layout == NULL)
         // no layout colors specified
         layout_count = 0;
     else
         // count the amount of colors and position negative starts in the telegram
         for (layout_count = 0; layout_count < MAX_N_LAYOUT; layout_count++)
         {
+            longnum_layout[layout_count] = layout[layout_count];  // copy the const input
+
             if (longnum_layout[layout_count].length == 0)
                 break;
 

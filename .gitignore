@@ -110,3 +110,7 @@
 /version.h
 /version.rc
 /testEnvironments.json
+/ss36/temp.c
+/out/build/WIN-x64-Release/py_balise_codec/py_balise_codec.ilk
+/out/build/WIN-x64-Release/tester/tester.ilk
+/lfsr7_table.c

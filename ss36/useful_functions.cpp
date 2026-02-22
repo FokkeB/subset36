@@ -162,7 +162,8 @@ signed int b64_decode(string in, uint8_t* out)
 // Decodes the base64 string "in" to int "out". Note: no size check on out!
 // Returns the amount of ints in out if success or -1 if illegal chars were in the input string
 {
-	unsigned int i = 0, j = 0, k = 0, s[4] = { 0 }, temp;
+	unsigned int i = 0, j = 0, k = 0, s[4] = { 0 };
+	signed int temp;
 
 	for (i = 0; i < in.length(); i++) 
 	{

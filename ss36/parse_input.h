@@ -16,18 +16,6 @@
 #include "telegram.h"
 #include <string.h>
 
-// expected input sizes of shaped telegrams: 
-#define N_CHARS_SHAPED_LONG_HEX          256    // 2 char/byte, 1024 bits/8=128 bytes=256 chars. So: SHR 1 to loose 1 bit to get to 1023 bits in complete telegram.
-#define N_CHARS_SHAPED_SHORT_HEX         86     // 2 char/byte, 344 bits/8=43 bytes=86 chars. So: SHR 3 to loose 3 bits to get 341 bits in complete telegram.
-#define N_CHARS_SHAPED_LONG_BASE64       172    // 4 chars/3 bytes, 1032 bits/8=129 bytes=172 chars. Leaves 9 bits, of which 8 are captured in trailing "=" So SHR 1 -> 1023 bits in complete telegram.
-#define N_CHARS_SHAPED_SHORT_BASE64      60     // 4 chars/3 bytes, 360 bits/8=45 bytes=60 chars. Leaves 19 bits, of which 16 are captured in trailing "==". So SHR 3 -> 341 bits in complete telegram.
-
-// expected input sizes of unshaped telegrams:
-#define N_CHARS_UNSHAPED_LONG_HEX        208    // 2 char/byte, 832 bits/8=104 bytes=208 chars. So: SHR 2 -> 830 user bits.
-#define N_CHARS_UNSHAPED_SHORT_HEX       54     // 2 char/byte, 216 bits/8=27 bytes=54 chars. So: SHR 6 -> 210 user bits.
-#define N_CHARS_UNSHAPED_LONG_BASE64     140    // 4 chars/3 bytes, 840 bits/8=105 bytes=140 chars. Leaves 10 bits, of which 8 are captured in trailing "=". So SHR 2 -> 830 user bits.
-#define N_CHARS_UNSHAPED_SHORT_BASE64    36     // 4 chars/3 bytes, 216 bits/8=27 bytes=36 chars. SHR 6 -> 210 user bits.
-
 #define MAX_ARRAY_SIZE					500		// max length of byte string read from a file (=one line)
 #define LINE_DELIM						'\n'	// line delimiter
 
