@@ -32,4 +32,4 @@ target_sources(ss36
             "lookup_tables.h"
             useful_functions.h
             errcodes.h
- "temp.c")
+ )
